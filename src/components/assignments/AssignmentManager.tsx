@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import Link from "next/link";
 import { AssignmentForm } from "@/components/assignments/AssignmentForm";
 import { CreateClientForm } from "@/components/trainer-dashboard/CreateClientForm";
@@ -243,13 +244,22 @@ function AssignmentRow({
           </p>
         ) : null}
         {canOpenClientDetail ? (
-          <Link
-            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
-            href={`/trainer/clients/${assignment.clientId}`}
-          >
-            Abrir ficha
-            <span aria-hidden="true">→</span>
-          </Link>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <Link
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+              href={`/trainer/clients/${assignment.clientId}`}
+            >
+              Abrir ficha
+              <span aria-hidden="true">→</span>
+            </Link>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border-strong bg-card px-4 py-2.5 text-sm font-black text-card-foreground hover:border-primary hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              href={`/trainer/routines/new?client=${assignment.clientId}`}
+            >
+              <Plus aria-hidden="true" className="size-4" />
+              Crear rutina
+            </Link>
+          </div>
         ) : null}
       </div>
     </li>
