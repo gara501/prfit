@@ -91,6 +91,9 @@ export async function AssignmentManager() {
                     canOpenRoutine={
                       !isAdmin && assignment.trainerId === data.currentUserId
                     }
+                    canOpenClientDetail={
+                      !isAdmin && assignment.trainerId === data.currentUserId
+                    }
                     key={assignment.clientId}
                     assignment={assignment}
                   />
@@ -145,9 +148,11 @@ export async function AssignmentManager() {
 function AssignmentRow({
   assignment,
   canOpenRoutine,
+  canOpenClientDetail,
 }: {
   assignment: ClientAssignment;
   canOpenRoutine: boolean;
+  canOpenClientDetail: boolean;
 }) {
   const clientName = getName(
     assignment.clientFirstName,
@@ -167,9 +172,18 @@ function AssignmentRow({
           {clientName.charAt(0).toUpperCase()}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-black text-slate-900">
-            {clientName}
-          </p>
+          {canOpenClientDetail ? (
+            <Link
+              className="block truncate text-lg font-black text-slate-900 underline-offset-4 hover:text-orange-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+              href={`/trainer/clients/${assignment.clientId}`}
+            >
+              {clientName}
+            </Link>
+          ) : (
+            <p className="truncate text-lg font-black text-slate-900">
+              {clientName}
+            </p>
+          )}
           <p className="mt-1 text-sm text-slate-500">
             {assignment.assignmentId
               ? `Con ${trainerName}`
@@ -227,6 +241,15 @@ function AssignmentRow({
             Vinculado desde{" "}
             {dateFormatter.format(new Date(assignment.startDate))}
           </p>
+        ) : null}
+        {canOpenClientDetail ? (
+          <Link
+            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+            href={`/trainer/clients/${assignment.clientId}`}
+          >
+            Abrir ficha
+            <span aria-hidden="true">→</span>
+          </Link>
         ) : null}
       </div>
     </li>
