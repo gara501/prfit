@@ -580,6 +580,50 @@ export type Database = {
           },
         ];
       };
+      routine_templates: {
+        Row: {
+          created_at: string;
+          days_at_week: number;
+          definition: Json;
+          description: string | null;
+          effort_metric: string;
+          id: string;
+          name: string;
+          trainer_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          days_at_week: number;
+          definition: Json;
+          description?: string | null;
+          effort_metric?: string;
+          id?: string;
+          name: string;
+          trainer_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          days_at_week?: number;
+          definition?: Json;
+          description?: string | null;
+          effort_metric?: string;
+          id?: string;
+          name?: string;
+          trainer_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "routine_templates_trainer_id_fkey";
+            columns: ["trainer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       routines: {
         Row: {
           client_id: string;

@@ -1,7 +1,8 @@
 "use client";
 
+import { ChevronDown, ChevronUp, Copy } from "lucide-react";
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { ExerciseCreatePanel } from "@/components/exercises/ExerciseCreateForm";
 import { ExerciseVideoButton } from "@/components/exercises/ExerciseVideoButton";
 import {
@@ -104,6 +105,10 @@ export function RoutineEditor({
     routine?.effortMetric ?? "rir",
   );
   const [activeDay, setActiveDay] = useState(1);
+  const [expandedExerciseKeys, setExpandedExerciseKeys] = useState<Set<string>>(
+    () => new Set(getInitialExercises(routine).map((exercise) => exercise.key)),
+  );
+  const [pendingScrollExerciseKey, setPendingScrollExerciseKey] = useState("");
   const today = new Date().toISOString().slice(0, 10);
   const visibleExercises = exercises.filter(
     (exercise) => exercise.dayNumber === activeDay,
@@ -135,10 +140,31 @@ export function RoutineEditor({
       })),
   );
 
+  useEffect(() => {
+    if (!pendingScrollExerciseKey) return;
+    const element = document.getElementById(
+      `routine-exercise-${pendingScrollExerciseKey}`,
+    );
+    if (!element) return;
+
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    requestAnimationFrame(() =>
+      element.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "start",
+      }),
+    );
+    setPendingScrollExerciseKey("");
+  }, [pendingScrollExerciseKey]);
+
   const addExercise = () => {
     const firstOption = exerciseOptions[0];
     if (!firstOption) return;
     const key = crypto.randomUUID();
+    setExpandedExerciseKeys(new Set([key]));
+    setPendingScrollExerciseKey(key);
     setExercises((current) => [
       ...current,
       {
@@ -452,9 +478,18 @@ export function RoutineEditor({
                     effortMetric={effortMetric}
                     exercise={exercise}
                     exerciseIndex={exerciseIndex}
+                    isExpanded={expandedExerciseKeys.has(exercise.key)}
                     key={exercise.key}
                     options={exerciseOptions}
                     setExercises={setExercises}
+                    toggleExpanded={() =>
+                      setExpandedExerciseKeys((current) => {
+                        const next = new Set(current);
+                        if (next.has(exercise.key)) next.delete(exercise.key);
+                        else next.add(exercise.key);
+                        return next;
+                      })
+                    }
                   />
                 ))}
               </div>
@@ -471,14 +506,18 @@ function ExerciseCard({
   effortMetric,
   exercise,
   exerciseIndex,
+  isExpanded,
   options,
   setExercises,
+  toggleExpanded,
 }: {
   effortMetric: "rir" | "rpe";
   exercise: EditableExercise;
   exerciseIndex: number;
+  isExpanded: boolean;
   options: ExerciseOption[];
   setExercises: React.Dispatch<React.SetStateAction<EditableExercise[]>>;
+  toggleExpanded: () => void;
 }) {
   const selectedOption = options.find(
     (option) => option.id === exercise.exerciseId,
@@ -498,7 +537,10 @@ function ExerciseCard({
     }));
 
   return (
-    <article className="overflow-hidden rounded-3xl border border-slate-300 bg-white shadow-[0_18px_45px_-38px_rgba(15,23,42,0.8)]">
+    <article
+      className="scroll-mt-24 overflow-hidden rounded-3xl border border-slate-300 bg-white shadow-[0_18px_45px_-38px_rgba(15,23,42,0.8)]"
+      id={`routine-exercise-${exercise.key}`}
+    >
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 bg-slate-50 px-5 py-4 sm:px-7">
         <span className="grid size-9 place-items-center rounded-xl bg-orange-500 font-mono text-sm font-black text-slate-950">
           {String(exerciseIndex + 1).padStart(2, "0")}
@@ -528,6 +570,19 @@ function ExerciseCard({
           />
         ) : null}
         <button
+          aria-expanded={isExpanded}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-xs font-black text-slate-600 hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+          onClick={toggleExpanded}
+          type="button"
+        >
+          {isExpanded ? "Contraer" : `${exercise.sets.length} series`}
+          {isExpanded ? (
+            <ChevronUp aria-hidden="true" className="size-4" />
+          ) : (
+            <ChevronDown aria-hidden="true" className="size-4" />
+          )}
+        </button>
+        <button
           className="rounded-lg px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50"
           onClick={() =>
             setExercises((current) =>
@@ -540,183 +595,213 @@ function ExerciseCard({
         </button>
       </div>
 
-      <div className="p-5 sm:p-7">
-        <div className="mb-5 grid gap-4 lg:grid-cols-2">
-          <label className="block text-xs font-bold text-slate-600">
-            Indicaciones de esta rutina
-            <textarea
-              className="mt-1.5 min-h-20 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100"
-              maxLength={2000}
-              onChange={(event) =>
-                updateExercise((item) => ({
-                  ...item,
-                  techniqueNotes: event.target.value,
-                }))
-              }
-              placeholder="Técnica, agarre, recorrido o prioridad para este bloque."
-              value={exercise.techniqueNotes}
-            />
-          </label>
-          <label className="block text-xs font-bold text-slate-600">
-            Nota permanente para este cliente
-            <textarea
-              className="mt-1.5 min-h-20 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100"
-              maxLength={2000}
-              onChange={(event) =>
-                updateExercise((item) => ({
-                  ...item,
-                  clientExerciseNote: event.target.value,
-                }))
-              }
-              placeholder="Ej.: evitar rango profundo por ahora."
-              value={exercise.clientExerciseNote}
-            />
-          </label>
-        </div>
-        <div className="mb-3 hidden grid-cols-[3rem_repeat(4,minmax(0,1fr))_2.5rem] gap-3 px-1 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:grid">
-          <span>Serie</span>
-          <span>Reps mín.</span>
-          <span>Reps máx.</span>
-          <span>Peso kg</span>
-          <span>Descanso s</span>
-          <span />
-        </div>
-        <div className="space-y-2">
-          {exercise.sets.map((set, setIndex) => (
-            <div
-              className="grid grid-cols-[2.5rem_repeat(4,minmax(0,1fr))_2.5rem] items-center gap-2 sm:grid-cols-[3rem_repeat(4,minmax(0,1fr))_2.5rem] sm:gap-3"
-              key={set.key}
-            >
-              <span className="font-mono text-sm font-black text-slate-400">
-                {setIndex + 1}
-              </span>
-              <SetInput
-                label={`Mínimo de repeticiones, serie ${setIndex + 1}`}
-                min="1"
-                value={set.repsMin}
-                onChange={(value) => updateSet(set.key, { repsMin: value })}
-              />
-              <SetInput
-                label={`Máximo de repeticiones, serie ${setIndex + 1}`}
-                min="1"
-                value={set.repsMax}
-                onChange={(value) => updateSet(set.key, { repsMax: value })}
-              />
-              <SetInput
-                label="Peso en kilogramos"
-                step="0.25"
-                value={set.weight}
-                onChange={(value) =>
+      {isExpanded ? (
+        <div className="p-5 sm:p-7">
+          <div className="mb-5 grid gap-4 lg:grid-cols-2">
+            <label className="block text-xs font-bold text-slate-600">
+              Indicaciones de esta rutina
+              <textarea
+                className="mt-1.5 min-h-20 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                maxLength={2000}
+                onChange={(event) =>
                   updateExercise((item) => ({
                     ...item,
-                    sets: item.sets.map((candidate) =>
-                      candidate.key === set.key
-                        ? { ...candidate, weight: value }
-                        : candidate,
-                    ),
+                    techniqueNotes: event.target.value,
                   }))
                 }
+                placeholder="Técnica, agarre, recorrido o prioridad para este bloque."
+                value={exercise.techniqueNotes}
               />
-              <SetInput
-                label="Descanso en segundos"
-                value={set.restSeconds}
-                onChange={(value) =>
+            </label>
+            <label className="block text-xs font-bold text-slate-600">
+              Nota permanente para este cliente
+              <textarea
+                className="mt-1.5 min-h-20 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                maxLength={2000}
+                onChange={(event) =>
                   updateExercise((item) => ({
                     ...item,
-                    sets: item.sets.map((candidate) =>
-                      candidate.key === set.key
-                        ? { ...candidate, restSeconds: value }
-                        : candidate,
-                    ),
+                    clientExerciseNote: event.target.value,
                   }))
                 }
+                placeholder="Ej.: evitar rango profundo por ahora."
+                value={exercise.clientExerciseNote}
               />
-              <button
-                aria-label={`Eliminar serie ${setIndex + 1}`}
-                className="grid size-9 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
-                disabled={exercise.sets.length === 1}
-                onClick={() =>
-                  updateExercise((item) => ({
-                    ...item,
-                    sets: item.sets.filter(
-                      (candidate) => candidate.key !== set.key,
-                    ),
-                  }))
-                }
-                type="button"
+            </label>
+          </div>
+          <div className="mb-3 hidden grid-cols-[3rem_repeat(4,minmax(0,1fr))_4.75rem] gap-3 px-1 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:grid">
+            <span>Serie</span>
+            <span>Reps mín.</span>
+            <span>Reps máx.</span>
+            <span>Peso kg</span>
+            <span>Descanso s</span>
+            <span />
+          </div>
+          <div className="space-y-2">
+            {exercise.sets.map((set, setIndex) => (
+              <div
+                className="grid grid-cols-[2.5rem_repeat(4,minmax(0,1fr))_4.75rem] items-center gap-2 sm:grid-cols-[3rem_repeat(4,minmax(0,1fr))_4.75rem] sm:gap-3"
+                key={set.key}
               >
-                ×
-              </button>
-              <div className="col-span-full grid gap-2 border-t border-slate-200 pt-3 sm:grid-cols-4">
-                <label className="text-xs font-bold text-slate-600">
-                  Tipo de serie
-                  <select
-                    className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-bold text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                    onChange={(event) =>
-                      updateSet(set.key, {
-                        setType: event.target.value as EditableSet["setType"],
-                      })
-                    }
-                    value={set.setType}
-                  >
-                    <option value="warmup">Calentamiento</option>
-                    <option value="ramp_up">Aproximación</option>
-                    <option value="working">Trabajo</option>
-                    <option value="drop_set">Drop set</option>
-                    <option value="amrap">AMRAP</option>
-                  </select>
-                </label>
+                <span className="font-mono text-sm font-black text-slate-400">
+                  {setIndex + 1}
+                </span>
                 <SetInput
-                  label={`${effortMetric.toUpperCase()} objetivo, serie ${setIndex + 1}`}
-                  min={effortMetric === "rir" ? "0" : "1"}
-                  value={set.targetEffort}
+                  label={`Mínimo de repeticiones, serie ${setIndex + 1}`}
+                  min="1"
+                  value={set.repsMin}
+                  onChange={(value) => updateSet(set.key, { repsMin: value })}
+                />
+                <SetInput
+                  label={`Máximo de repeticiones, serie ${setIndex + 1}`}
+                  min="1"
+                  value={set.repsMax}
+                  onChange={(value) => updateSet(set.key, { repsMax: value })}
+                />
+                <SetInput
+                  label="Peso en kilogramos"
+                  step="0.25"
+                  value={set.weight}
                   onChange={(value) =>
-                    updateSet(set.key, { targetEffort: value })
+                    updateExercise((item) => ({
+                      ...item,
+                      sets: item.sets.map((candidate) =>
+                        candidate.key === set.key
+                          ? { ...candidate, weight: value }
+                          : candidate,
+                      ),
+                    }))
                   }
                 />
-                <label className="text-xs font-bold text-slate-600">
-                  Tempo
-                  <input
-                    className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-bold text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
-                    maxLength={16}
-                    onChange={(event) =>
-                      updateSet(set.key, { tempo: event.target.value })
+                <SetInput
+                  label="Descanso en segundos"
+                  value={set.restSeconds}
+                  onChange={(value) =>
+                    updateExercise((item) => ({
+                      ...item,
+                      sets: item.sets.map((candidate) =>
+                        candidate.key === set.key
+                          ? { ...candidate, restSeconds: value }
+                          : candidate,
+                      ),
+                    }))
+                  }
+                />
+                <div className="flex items-center gap-1">
+                  <button
+                    aria-label={`Duplicar serie ${setIndex + 1}`}
+                    className="grid size-9 place-items-center rounded-lg text-slate-400 hover:bg-orange-50 hover:text-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                    onClick={() =>
+                      updateExercise((item) => {
+                        const currentIndex = item.sets.findIndex(
+                          (candidate) => candidate.key === set.key,
+                        );
+                        const duplicate = {
+                          ...set,
+                          key: `${item.key}-${crypto.randomUUID()}`,
+                        };
+                        return {
+                          ...item,
+                          sets: [
+                            ...item.sets.slice(0, currentIndex + 1),
+                            duplicate,
+                            ...item.sets.slice(currentIndex + 1),
+                          ],
+                        };
+                      })
                     }
-                    placeholder="3-1-X-0"
-                    value={set.tempo}
-                  />
-                </label>
-                <label className="mt-5 flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700">
-                  <input
-                    checked={set.isOptional}
-                    className="size-4 accent-orange-500"
-                    onChange={(event) =>
-                      updateSet(set.key, { isOptional: event.target.checked })
+                    type="button"
+                  >
+                    <Copy aria-hidden="true" className="size-4" />
+                  </button>
+                  <button
+                    aria-label={`Eliminar serie ${setIndex + 1}`}
+                    className="grid size-9 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
+                    disabled={exercise.sets.length === 1}
+                    onClick={() =>
+                      updateExercise((item) => ({
+                        ...item,
+                        sets: item.sets.filter(
+                          (candidate) => candidate.key !== set.key,
+                        ),
+                      }))
                     }
-                    type="checkbox"
+                    type="button"
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="col-span-full grid gap-2 border-t border-slate-200 pt-3 sm:grid-cols-4">
+                  <label className="text-xs font-bold text-slate-600">
+                    Tipo de serie
+                    <select
+                      className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-bold text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                      onChange={(event) =>
+                        updateSet(set.key, {
+                          setType: event.target.value as EditableSet["setType"],
+                        })
+                      }
+                      value={set.setType}
+                    >
+                      <option value="warmup">Calentamiento</option>
+                      <option value="ramp_up">Aproximación</option>
+                      <option value="working">Trabajo</option>
+                      <option value="drop_set">Drop set</option>
+                      <option value="amrap">AMRAP</option>
+                    </select>
+                  </label>
+                  <SetInput
+                    label={`${effortMetric.toUpperCase()} objetivo, serie ${setIndex + 1}`}
+                    min={effortMetric === "rir" ? "0" : "1"}
+                    value={set.targetEffort}
+                    onChange={(value) =>
+                      updateSet(set.key, { targetEffort: value })
+                    }
                   />
-                  Serie opcional
-                </label>
+                  <label className="text-xs font-bold text-slate-600">
+                    Tempo
+                    <input
+                      className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-bold text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                      maxLength={16}
+                      onChange={(event) =>
+                        updateSet(set.key, { tempo: event.target.value })
+                      }
+                      placeholder="3-1-X-0"
+                      value={set.tempo}
+                    />
+                  </label>
+                  <label className="mt-5 flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700">
+                    <input
+                      checked={set.isOptional}
+                      className="size-4 accent-orange-500"
+                      onChange={(event) =>
+                        updateSet(set.key, { isOptional: event.target.checked })
+                      }
+                      type="checkbox"
+                    />
+                    Serie opcional
+                  </label>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <button
+            className="mt-4 rounded-lg border border-dashed border-slate-300 px-4 py-2 text-xs font-black text-slate-600 hover:border-orange-400 hover:text-orange-700"
+            onClick={() =>
+              updateExercise((item) => ({
+                ...item,
+                sets: [
+                  ...item.sets,
+                  emptySet(`${item.key}-${crypto.randomUUID()}`),
+                ],
+              }))
+            }
+            type="button"
+          >
+            + Añadir serie
+          </button>
         </div>
-        <button
-          className="mt-4 rounded-lg border border-dashed border-slate-300 px-4 py-2 text-xs font-black text-slate-600 hover:border-orange-400 hover:text-orange-700"
-          onClick={() =>
-            updateExercise((item) => ({
-              ...item,
-              sets: [
-                ...item.sets,
-                emptySet(`${item.key}-${crypto.randomUUID()}`),
-              ],
-            }))
-          }
-          type="button"
-        >
-          + Añadir serie
-        </button>
-      </div>
+      ) : null}
     </article>
   );
 }

@@ -42,7 +42,7 @@ export function CreateClientForm() {
           {state.clientId ? (
             <Link
               className="mt-2 inline-block font-black underline"
-              href={`/trainer?client=${state.clientId}`}
+              href={`/trainer/clients/${state.clientId}`}
             >
               Abrir ficha
             </Link>
