@@ -32,12 +32,20 @@ export default async function TrainerRoutinesPage() {
               Diseña, revisa y ajusta el trabajo prescrito para cada deportista.
             </p>
           </div>
-          <Link
-            className="rounded-2xl bg-orange-500 px-6 py-3.5 text-center text-sm font-black text-slate-950 shadow-[inset_0_-3px_0_rgba(0,0,0,0.14)] transition hover:-translate-y-0.5 hover:bg-orange-400"
-            href="/trainer/routines/new"
-          >
-            + Nueva rutina
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link
+              className="min-h-11 rounded-xl border border-border-strong bg-card px-5 py-3 text-center text-sm font-black text-card-foreground transition hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              href="/trainer/routines/templates"
+            >
+              Plantillas
+            </Link>
+            <Link
+              className="min-h-11 rounded-xl bg-primary px-5 py-3 text-center text-sm font-black text-primary-foreground transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              href="/trainer/routines/new"
+            >
+              + Nueva rutina
+            </Link>
+          </div>
         </header>
 
         <div className="mb-7 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-slate-300 bg-slate-300 sm:w-fit">

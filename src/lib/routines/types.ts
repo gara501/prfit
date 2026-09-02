@@ -62,3 +62,21 @@ export type RoutineDetail = {
 export type RoutineListItem = Omit<RoutineDetail, "exercises"> & {
   exerciseCount: number;
 };
+
+export type RoutineTemplateDetail = {
+  id: string;
+  name: string;
+  description: string;
+  daysAtWeek: number;
+  effortMetric: EffortMetric;
+  createdAt: string;
+  updatedAt: string;
+  exercises: RoutineExercise[];
+};
+
+export type RoutineTemplateListItem = Omit<
+  RoutineTemplateDetail,
+  "exercises"
+> & {
+  exerciseCount: number;
+};
