@@ -8,11 +8,13 @@ import { ExerciseVideoButton } from "@/components/exercises/ExerciseVideoButton"
 import {
   type RoutineActionState,
   saveRoutineDraft,
+  saveRoutineTemplate,
 } from "@/lib/routines/actions";
 import type {
   ExerciseOption,
   RoutineClient,
   RoutineDetail,
+  RoutineTemplateDetail,
 } from "@/lib/routines/types";
 
 type EditableSet = {
@@ -54,7 +56,7 @@ const emptySet = (key: string): EditableSet => ({
 });
 
 function getInitialExercises(
-  routine: RoutineDetail | null,
+  routine: RoutineDetail | RoutineTemplateDetail | null,
 ): EditableExercise[] {
   if (!routine) return [];
   return routine.exercises.map((exercise) => ({
@@ -85,28 +87,34 @@ export function RoutineEditor({
   defaultClientId,
   exerciseOptions,
   routine,
+  starterTemplate = null,
+  template = null,
+  mode = "routine",
 }: {
   clients: RoutineClient[];
   defaultClientId?: string;
   exerciseOptions: ExerciseOption[];
   routine: RoutineDetail | null;
+  starterTemplate?: RoutineTemplateDetail | null;
+  template?: RoutineTemplateDetail | null;
+  mode?: "routine" | "template";
 }) {
+  const isTemplateEditor = mode === "template";
+  const source = isTemplateEditor ? template : (routine ?? starterTemplate);
   const [state, formAction, isPending] = useActionState(
-    saveRoutineDraft,
+    isTemplateEditor ? saveRoutineTemplate : saveRoutineDraft,
     initialActionState,
   );
-  const [exercises, setExercises] = useState(() =>
-    getInitialExercises(routine),
-  );
+  const [exercises, setExercises] = useState(() => getInitialExercises(source));
   const [daysAtWeek, setDaysAtWeek] = useState(
-    routine ? (routine.daysAtWeek ?? 1) : 3,
+    source ? (source.daysAtWeek ?? 1) : 3,
   );
   const [effortMetric, setEffortMetric] = useState<"rir" | "rpe">(
-    routine?.effortMetric ?? "rir",
+    source?.effortMetric ?? "rir",
   );
   const [activeDay, setActiveDay] = useState(1);
   const [expandedExerciseKeys, setExpandedExerciseKeys] = useState<Set<string>>(
-    () => new Set(getInitialExercises(routine).map((exercise) => exercise.key)),
+    () => new Set(getInitialExercises(source).map((exercise) => exercise.key)),
   );
   const [pendingScrollExerciseKey, setPendingScrollExerciseKey] = useState("");
   const today = new Date().toISOString().slice(0, 10);
@@ -125,7 +133,9 @@ export function RoutineEditor({
         day_number: exercise.dayNumber,
         exercise_id: exercise.exerciseId,
         technique_notes: exercise.techniqueNotes,
-        client_exercise_note: exercise.clientExerciseNote,
+        client_exercise_note: isTemplateEditor
+          ? ""
+          : exercise.clientExerciseNote,
         sets: exercise.sets.map((set) => ({
           reps_min: set.repsMin,
           reps_max: set.repsMax,
@@ -210,9 +220,10 @@ export function RoutineEditor({
   };
 
   return (
-    <div className="min-h-[calc(100vh-5rem)] bg-[#f4f6f1] px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
+    <div className="min-h-[calc(100vh-5rem)] bg-surface-subtle px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
       <form action={formAction} className="mx-auto max-w-7xl">
         <input name="routineId" type="hidden" value={routine?.id ?? ""} />
+        <input name="templateId" type="hidden" value={template?.id ?? ""} />
         <input name="exercises" type="hidden" value={serializedExercises} />
 
         <header className="mb-8 flex flex-col gap-5 border-b border-slate-300 pb-7 md:flex-row md:items-end md:justify-between">
@@ -220,29 +231,44 @@ export function RoutineEditor({
             <Link
               className="font-mono text-xs font-bold uppercase tracking-[0.18em] text-orange-700 hover:text-orange-900"
               href={
-                routine
-                  ? `/trainer/routines/${routine.id}`
-                  : "/trainer/routines"
+                isTemplateEditor
+                  ? "/trainer/routines/templates"
+                  : routine
+                    ? `/trainer/routines/${routine.id}`
+                    : "/trainer/routines"
               }
             >
-              ← Volver a rutinas
+              ← Volver a {isTemplateEditor ? "plantillas" : "rutinas"}
             </Link>
             <h1 className="mt-3 text-4xl font-black tracking-[-0.04em] text-slate-950 sm:text-5xl">
-              {routine ? "Editar borrador" : "Diseñar plan semanal"}
+              {isTemplateEditor
+                ? template
+                  ? "Editar plantilla"
+                  : "Crear plantilla"
+                : routine
+                  ? "Editar borrador"
+                  : "Diseñar plan semanal"}
             </h1>
             <p className="mt-3 max-w-2xl text-slate-600">
-              Define el bloque de trabajo completo. Todos los ejercicios y sus
-              series se guardan juntos en un borrador antes de publicarlo.
+              {isTemplateEditor
+                ? "Crea una base reutilizable. Al asignarla a un cliente se generará una copia independiente."
+                : "Define el bloque de trabajo completo. Todos los ejercicios y sus series se guardan juntos en un borrador antes de publicarlo."}
             </p>
           </div>
           <button
             className="rounded-2xl bg-orange-500 px-6 py-3.5 text-sm font-black text-slate-950 shadow-[inset_0_-3px_0_rgba(0,0,0,0.14)] transition hover:-translate-y-0.5 hover:bg-orange-400 disabled:cursor-wait disabled:opacity-60"
             disabled={
-              isPending || clients.length === 0 || missingDays.length > 0
+              isPending ||
+              (!isTemplateEditor && clients.length === 0) ||
+              missingDays.length > 0
             }
             type="submit"
           >
-            {isPending ? "Guardando borrador…" : "Guardar borrador"}
+            {isPending
+              ? "Guardando…"
+              : isTemplateEditor
+                ? "Guardar plantilla"
+                : "Guardar borrador"}
           </button>
         </header>
 
@@ -265,7 +291,7 @@ export function RoutineEditor({
                 <Field htmlFor="routine-name" label="Nombre">
                   <input
                     className={inputClass}
-                    defaultValue={routine?.name ?? ""}
+                    defaultValue={source?.name ?? ""}
                     id="routine-name"
                     maxLength={120}
                     name="name"
@@ -273,25 +299,27 @@ export function RoutineEditor({
                     required
                   />
                 </Field>
-                <Field htmlFor="routine-client" label="Deportista">
-                  <select
-                    className={inputClass}
-                    defaultValue={routine?.clientId ?? defaultClientId ?? ""}
-                    id="routine-client"
-                    name="clientId"
-                    required
-                  >
-                    <option disabled value="">
-                      Selecciona un cliente
-                    </option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {`${client.firstName} ${client.lastName}`.trim()}
+                {!isTemplateEditor ? (
+                  <Field htmlFor="routine-client" label="Deportista">
+                    <select
+                      className={inputClass}
+                      defaultValue={routine?.clientId ?? defaultClientId ?? ""}
+                      id="routine-client"
+                      name="clientId"
+                      required
+                    >
+                      <option disabled value="">
+                        Selecciona un cliente
                       </option>
-                    ))}
-                  </select>
-                </Field>
-                {clients.length === 0 ? (
+                      {clients.map((client) => (
+                        <option key={client.id} value={client.id}>
+                          {`${client.firstName} ${client.lastName}`.trim()}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                ) : null}
+                {!isTemplateEditor && clients.length === 0 ? (
                   <p className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-800">
                     Primero necesitas un cliente activo. Puedes vincularlo en{" "}
                     <Link
@@ -306,7 +334,7 @@ export function RoutineEditor({
                 <Field htmlFor="routine-description" label="Descripción">
                   <textarea
                     className={`${inputClass} min-h-24 resize-y`}
-                    defaultValue={routine?.description ?? ""}
+                    defaultValue={source?.description ?? ""}
                     id="routine-description"
                     maxLength={2000}
                     name="description"
@@ -327,27 +355,29 @@ export function RoutineEditor({
                     <option value="rpe">RPE · esfuerzo percibido</option>
                   </select>
                 </Field>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field htmlFor="routine-start" label="Inicio">
-                    <input
-                      className={inputClass}
-                      defaultValue={routine?.startDate ?? today}
-                      id="routine-start"
-                      name="startDate"
-                      required
-                      type="date"
-                    />
-                  </Field>
-                  <Field htmlFor="routine-end" label="Final">
-                    <input
-                      className={inputClass}
-                      defaultValue={routine?.endDate ?? ""}
-                      id="routine-end"
-                      name="endDate"
-                      type="date"
-                    />
-                  </Field>
-                </div>
+                {!isTemplateEditor ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field htmlFor="routine-start" label="Inicio">
+                      <input
+                        className={inputClass}
+                        defaultValue={routine?.startDate ?? today}
+                        id="routine-start"
+                        name="startDate"
+                        required
+                        type="date"
+                      />
+                    </Field>
+                    <Field htmlFor="routine-end" label="Final">
+                      <input
+                        className={inputClass}
+                        defaultValue={routine?.endDate ?? ""}
+                        id="routine-end"
+                        name="endDate"
+                        type="date"
+                      />
+                    </Field>
+                  </div>
+                ) : null}
                 <Field htmlFor="routine-days" label="Días por semana">
                   <input
                     className={inputClass}
@@ -369,8 +399,9 @@ export function RoutineEditor({
                   />
                 </Field>
                 <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-600">
-                  Guardar no cambia la rutina del cliente. Publica este borrador
-                  desde su detalle cuando esté listo.
+                  {isTemplateEditor
+                    ? "Esta plantilla no queda asignada a nadie. Se usa como punto de partida para nuevas rutinas."
+                    : "Guardar no cambia la rutina del cliente. Publica este borrador desde su detalle cuando esté listo."}
                 </p>
               </div>
             </section>
@@ -478,6 +509,7 @@ export function RoutineEditor({
                     effortMetric={effortMetric}
                     exercise={exercise}
                     exerciseIndex={exerciseIndex}
+                    clientNoteEnabled={!isTemplateEditor}
                     isExpanded={expandedExerciseKeys.has(exercise.key)}
                     key={exercise.key}
                     options={exerciseOptions}
@@ -503,6 +535,7 @@ export function RoutineEditor({
 }
 
 function ExerciseCard({
+  clientNoteEnabled,
   effortMetric,
   exercise,
   exerciseIndex,
@@ -511,6 +544,7 @@ function ExerciseCard({
   setExercises,
   toggleExpanded,
 }: {
+  clientNoteEnabled: boolean;
   effortMetric: "rir" | "rpe";
   exercise: EditableExercise;
   exerciseIndex: number;
@@ -597,7 +631,9 @@ function ExerciseCard({
 
       {isExpanded ? (
         <div className="p-5 sm:p-7">
-          <div className="mb-5 grid gap-4 lg:grid-cols-2">
+          <div
+            className={`mb-5 grid gap-4 ${clientNoteEnabled ? "lg:grid-cols-2" : ""}`}
+          >
             <label className="block text-xs font-bold text-slate-600">
               Indicaciones de esta rutina
               <textarea
@@ -613,21 +649,23 @@ function ExerciseCard({
                 value={exercise.techniqueNotes}
               />
             </label>
-            <label className="block text-xs font-bold text-slate-600">
-              Nota permanente para este cliente
-              <textarea
-                className="mt-1.5 min-h-20 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100"
-                maxLength={2000}
-                onChange={(event) =>
-                  updateExercise((item) => ({
-                    ...item,
-                    clientExerciseNote: event.target.value,
-                  }))
-                }
-                placeholder="Ej.: evitar rango profundo por ahora."
-                value={exercise.clientExerciseNote}
-              />
-            </label>
+            {clientNoteEnabled ? (
+              <label className="block text-xs font-bold text-slate-600">
+                Nota permanente para este cliente
+                <textarea
+                  className="mt-1.5 min-h-20 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100"
+                  maxLength={2000}
+                  onChange={(event) =>
+                    updateExercise((item) => ({
+                      ...item,
+                      clientExerciseNote: event.target.value,
+                    }))
+                  }
+                  placeholder="Ej.: evitar rango profundo por ahora."
+                  value={exercise.clientExerciseNote}
+                />
+              </label>
+            ) : null}
           </div>
           <div className="mb-3 hidden grid-cols-[3rem_repeat(4,minmax(0,1fr))_4.75rem] gap-3 px-1 font-mono text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:grid">
             <span>Serie</span>

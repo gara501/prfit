@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { normalizeYouTubeUrl } from "@/lib/exercises/youtube";
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/types/database";
+import { isValidTemplateDefinition } from "./template-definition";
 
 export type RoutineActionState = {
   status: "idle" | "error" | "success";
@@ -86,6 +88,77 @@ export async function saveRoutineDraft(
 
   revalidateRoutineViews();
   redirect(`/trainer/routines/${data}`);
+}
+
+export async function saveRoutineTemplate(
+  _state: RoutineActionState,
+  formData: FormData,
+): Promise<RoutineActionState> {
+  const account = await requireRole("trainer");
+  const templateId = text(formData, "templateId");
+  const name = text(formData, "name");
+  const description = text(formData, "description");
+  const daysAtWeek = Number(text(formData, "daysAtWeek"));
+  const effortMetric = text(formData, "effortMetric");
+  const exercisesJson = text(formData, "exercises");
+
+  if (
+    (templateId && !uuidPattern.test(templateId)) ||
+    !name ||
+    !Number.isInteger(daysAtWeek) ||
+    daysAtWeek < 1 ||
+    daysAtWeek > 7 ||
+    !["rir", "rpe"].includes(effortMetric)
+  ) {
+    return { status: "error", message: "Revisa los datos de la plantilla." };
+  }
+
+  let definition: Json;
+  try {
+    definition = JSON.parse(exercisesJson) as Json;
+  } catch {
+    return { status: "error", message: "No fue posible leer los ejercicios." };
+  }
+  if (!isValidTemplateDefinition(definition, daysAtWeek)) {
+    return {
+      status: "error",
+      message: "Agrega al menos un ejercicio con una serie en cada día.",
+    };
+  }
+
+  const supabase = createClient(await cookies());
+  const values = {
+    trainer_id: account.user.id,
+    name,
+    description: description || null,
+    days_at_week: daysAtWeek,
+    effort_metric: effortMetric,
+    definition,
+    updated_at: new Date().toISOString(),
+  };
+  const result = templateId
+    ? await supabase
+        .from("routine_templates")
+        .update(values)
+        .eq("id", templateId)
+        .eq("trainer_id", account.user.id)
+        .select("id")
+        .maybeSingle()
+    : await supabase
+        .from("routine_templates")
+        .insert(values)
+        .select("id")
+        .single();
+
+  if (result.error || !result.data) {
+    return {
+      status: "error",
+      message: result.error?.message ?? "No fue posible guardar la plantilla.",
+    };
+  }
+
+  revalidateRoutineViews();
+  redirect("/trainer/routines/templates");
 }
 
 export async function deleteRoutineDraft(formData: FormData) {
@@ -176,6 +249,7 @@ export async function archiveRoutineVersion(formData: FormData) {
 function revalidateRoutineViews() {
   revalidatePath("/trainer");
   revalidatePath("/trainer/routines");
+  revalidatePath("/trainer/routines/templates");
   revalidatePath("/client");
   revalidatePath("/client/sessions");
 }

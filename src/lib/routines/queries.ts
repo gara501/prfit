@@ -1,12 +1,16 @@
 import { cookies } from "next/headers";
 import { requireRole } from "@/lib/auth/require-role";
 import { createClient } from "@/lib/supabase/server";
+import type { Json } from "@/types/database";
+import { parseTemplateDefinition } from "./template-definition";
 import type {
   EffortMetric,
   ExerciseOption,
   RoutineClient,
   RoutineDetail,
   RoutineListItem,
+  RoutineTemplateDetail,
+  RoutineTemplateListItem,
   RoutineVersionStatus,
 } from "./types";
 
@@ -61,6 +65,105 @@ export async function getTrainerRoutines(): Promise<{
   });
 
   return { routines, error: null };
+}
+
+export async function getRoutineTemplates(): Promise<{
+  templates: RoutineTemplateListItem[];
+  error: string | null;
+}> {
+  await requireRole("trainer");
+  const supabase = createClient(await cookies());
+  const { data, error } = await supabase
+    .from("routine_templates")
+    .select(
+      "id, name, description, days_at_week, effort_metric, definition, created_at, updated_at",
+    )
+    .order("updated_at", { ascending: false });
+
+  if (error) return { templates: [], error: error.message };
+
+  return {
+    templates: (data ?? []).map((template) => ({
+      id: template.id,
+      name: template.name,
+      description: template.description ?? "",
+      daysAtWeek: template.days_at_week,
+      effortMetric: template.effort_metric as EffortMetric,
+      createdAt: template.created_at,
+      updatedAt: template.updated_at,
+      exerciseCount: Array.isArray(template.definition)
+        ? template.definition.length
+        : 0,
+    })),
+    error: null,
+  };
+}
+
+export async function getRoutineTemplateWorkspace(
+  templateId?: string,
+): Promise<{
+  exercises: ExerciseOption[];
+  template: RoutineTemplateDetail | null;
+  error: string | null;
+}> {
+  await requireRole("trainer");
+  const supabase = createClient(await cookies());
+  const exercisesPromise = supabase
+    .from("exercises")
+    .select("id, name, video_url")
+    .order("name");
+  const templatePromise = templateId
+    ? supabase
+        .from("routine_templates")
+        .select(
+          "id, name, description, days_at_week, effort_metric, definition, created_at, updated_at",
+        )
+        .eq("id", templateId)
+        .single()
+    : Promise.resolve({ data: null, error: null });
+  const [exercisesResult, templateResult] = await Promise.all([
+    exercisesPromise,
+    templatePromise,
+  ]);
+  const error = exercisesResult.error ?? templateResult.error;
+  if (error) return { exercises: [], template: null, error: error.message };
+
+  const exercises = (exercisesResult.data ?? []).map((exercise) => ({
+    id: exercise.id,
+    name: exercise.name,
+    videoUrl: exercise.video_url ?? "",
+  }));
+  if (!templateResult.data) return { exercises, template: null, error: null };
+
+  const rawTemplate = templateResult.data;
+  const effortMetric = rawTemplate.effort_metric as EffortMetric;
+  const templateExercises = parseTemplateDefinition(
+    rawTemplate.definition as Json,
+    exercises,
+    effortMetric,
+  );
+  if (!templateExercises) {
+    return {
+      exercises,
+      template: null,
+      error: "La definición de la plantilla no es válida.",
+    };
+  }
+
+  return {
+    exercises,
+    template: {
+      id: rawTemplate.id,
+      name: rawTemplate.name,
+      description: rawTemplate.description ?? "",
+      daysAtWeek: rawTemplate.days_at_week,
+      effortMetric,
+      createdAt: rawTemplate.created_at,
+      updatedAt: rawTemplate.updated_at,
+      exercises: templateExercises,
+    },
+    error: null,
+  };
 }
 
 export async function getRoutineWorkspace(routineId?: string): Promise<{
