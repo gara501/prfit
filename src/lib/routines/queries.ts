@@ -189,7 +189,7 @@ export async function getRoutineWorkspace(routineId?: string): Promise<{
     ? supabase
         .from("routines")
         .select(
-          "id, plan_id, version_number, status, published_at, supersedes_routine_id, client_id, name, description, start_date, end_date, days_at_week, effort_metric, is_active, client:profiles!routines_client_id_fkey(first_name, last_name), routine_exercises(id, day_number, exercise_id, order_index, technique_notes, exercise:exercises!routine_exercises_exercise_id_fkey(id, name, video_url), routine_exercise_sets(id, set_number, reps, reps_min, reps_max, rest_seconds, weight, target_rir, target_rpe, set_type, tempo, is_optional))",
+          "id, plan_id, version_number, status, published_at, supersedes_routine_id, client_id, name, description, start_date, end_date, days_at_week, effort_metric, is_active, client:profiles!routines_client_id_fkey(first_name, last_name), routine_exercises(id, day_number, exercise_id, order_index, technique_notes, exercise:exercises!routine_exercises_exercise_id_fkey(id, name, video_url), routine_exercise_sets(id, set_number, reps, reps_min, reps_max, rest_seconds, weight, target_rir, target_rpe, set_type, training_method, tempo, is_optional))",
         )
         .eq("id", routineId)
         .single()
@@ -279,6 +279,7 @@ export async function getRoutineWorkspace(routineId?: string): Promise<{
       target_rir: number | null;
       target_rpe: number | null;
       set_type: "warmup" | "ramp_up" | "working" | "drop_set" | "amrap";
+      training_method: import("./training-methods").TrainingMethod;
       tempo: string | null;
       is_optional: boolean;
     }>;
@@ -305,6 +306,7 @@ export async function getRoutineWorkspace(routineId?: string): Promise<{
           targetRir: set.target_rir,
           targetRpe: set.target_rpe,
           setType: set.set_type,
+          trainingMethod: set.training_method,
           tempo: set.tempo ?? "",
           isOptional: set.is_optional,
         }))

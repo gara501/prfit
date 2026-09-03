@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from "react";
 import { ExerciseVideoButton } from "@/components/exercises/ExerciseVideoButton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
+import { getTrainingMethod } from "@/lib/routines/training-methods";
 import type {
   LiveWorkoutExercise,
   LiveWorkoutSession,
@@ -1330,6 +1331,9 @@ function formatPlannedSet(set: LiveWorkoutSet) {
         : `${set.plannedRepsMin}–${set.plannedRepsMax} reps`;
   const values = [
     setTypeLabel(set.setType),
+    set.trainingMethod === "traditional"
+      ? null
+      : getTrainingMethod(set.trainingMethod).label,
     reps,
     set.plannedWeight === null ? null : `${formatNumber(set.plannedWeight)} kg`,
     set.plannedTargetEffort === null

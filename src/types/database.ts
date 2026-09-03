@@ -334,6 +334,7 @@ export type Database = {
           routine_exercise_id: string;
           set_number: number;
           set_type: string;
+          training_method: string;
           target_rir: number | null;
           target_rpe: number | null;
           tempo: string | null;
@@ -349,6 +350,7 @@ export type Database = {
           routine_exercise_id: string;
           set_number: number;
           set_type?: string;
+          training_method?: string;
           target_rir?: number | null;
           target_rpe?: number | null;
           tempo?: string | null;
@@ -364,6 +366,7 @@ export type Database = {
           routine_exercise_id?: string;
           set_number?: number;
           set_type?: string;
+          training_method?: string;
           target_rir?: number | null;
           target_rpe?: number | null;
           tempo?: string | null;
@@ -972,6 +975,7 @@ export type Database = {
           planned_reps_max: number | null;
           planned_reps_min: number | null;
           planned_set_type: string;
+          planned_training_method: string;
           planned_target_rir: number | null;
           planned_target_rpe: number | null;
           planned_tempo: string | null;
@@ -996,6 +1000,7 @@ export type Database = {
           planned_reps_max?: number | null;
           planned_reps_min?: number | null;
           planned_set_type?: string;
+          planned_training_method?: string;
           planned_target_rir?: number | null;
           planned_target_rpe?: number | null;
           planned_tempo?: string | null;
@@ -1020,6 +1025,7 @@ export type Database = {
           planned_reps_max?: number | null;
           planned_reps_min?: number | null;
           planned_set_type?: string;
+          planned_training_method?: string;
           planned_target_rir?: number | null;
           planned_target_rpe?: number | null;
           planned_tempo?: string | null;
@@ -1262,6 +1268,7 @@ export type Database = {
           p_name: string;
           p_routine_id: string;
           p_start_date: string;
+          p_training_methods: Json;
         };
         Returns: string;
       };

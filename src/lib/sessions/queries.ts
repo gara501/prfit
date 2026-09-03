@@ -109,7 +109,7 @@ export async function getLiveWorkoutSession(
   const setsPromise = supabase
     .from("workout_session_sets")
     .select(
-      "id, routine_exercise_id, exercise_id, set_number, reps, weight, completed, planned_reps_min, planned_reps_max, planned_weight, planned_target_rir, planned_target_rpe, planned_set_type, planned_tempo, planned_is_optional, actual_rir, actual_rpe, client_notes, deviation_reason, exercise:exercises!workout_session_sets_exercise_id_fkey(name, video_url)",
+      "id, routine_exercise_id, exercise_id, set_number, reps, weight, completed, planned_reps_min, planned_reps_max, planned_weight, planned_target_rir, planned_target_rpe, planned_set_type, planned_training_method, planned_tempo, planned_is_optional, actual_rir, actual_rpe, client_notes, deviation_reason, exercise:exercises!workout_session_sets_exercise_id_fkey(name, video_url)",
     )
     .eq("workout_session_id", sessionId);
   const planPromise = session.routine_id
@@ -243,6 +243,7 @@ export async function getLiveWorkoutSession(
           ? row.planned_target_rpe
           : row.planned_target_rir,
       setType: row.planned_set_type,
+      trainingMethod: row.planned_training_method,
       tempo: row.planned_tempo ?? "",
       isOptional: row.planned_is_optional,
       actualEffort:

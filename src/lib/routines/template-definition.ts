@@ -1,4 +1,5 @@
 import type { Json } from "@/types/database";
+import { isTrainingMethod } from "./training-methods";
 import type { EffortMetric, ExerciseOption, RoutineExercise } from "./types";
 
 type JsonRecord = { [key: string]: Json | undefined };
@@ -48,6 +49,7 @@ export function parseTemplateDefinition(
       if (!isRecord(rawSet)) return null;
       const rawSetType = asString(rawSet.set_type);
       const setType = setTypes.has(rawSetType) ? rawSetType : "working";
+      const rawTrainingMethod = asString(rawSet.training_method);
       return {
         id: `template-set-${exerciseIndex}-${setIndex}`,
         setNumber: setIndex + 1,
@@ -59,6 +61,9 @@ export function parseTemplateDefinition(
         targetRir: effortMetric === "rir" ? asNumber(rawSet.target_rir) : null,
         targetRpe: effortMetric === "rpe" ? asNumber(rawSet.target_rpe) : null,
         setType: setType as RoutineExercise["sets"][number]["setType"],
+        trainingMethod: isTrainingMethod(rawTrainingMethod)
+          ? rawTrainingMethod
+          : "traditional",
         tempo: asString(rawSet.tempo),
         isOptional: rawSet.is_optional === true,
       };

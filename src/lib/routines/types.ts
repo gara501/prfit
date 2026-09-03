@@ -1,3 +1,5 @@
+import type { TrainingMethod } from "./training-methods";
+
 export type RoutineClient = {
   id: string;
   firstName: string;
@@ -24,6 +26,7 @@ export type RoutineSet = {
   targetRir: number | null;
   targetRpe: number | null;
   setType: "warmup" | "ramp_up" | "working" | "drop_set" | "amrap";
+  trainingMethod: TrainingMethod;
   tempo: string;
   isOptional: boolean;
 };
