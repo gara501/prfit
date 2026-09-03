@@ -21,6 +21,7 @@ const definition: Json = [
         target_rir: "2",
         target_rpe: "",
         set_type: "working",
+        training_method: "eccentric",
         tempo: "3-1-X-0",
         is_optional: false,
       },
@@ -41,7 +42,11 @@ describe("routine template definitions", () => {
       techniqueNotes: "Controlar la bajada",
       clientExerciseNote: "",
     });
-    expect(parsed?.[0]?.sets[0]).toMatchObject({ repsMin: 8, targetRir: 2 });
+    expect(parsed?.[0]?.sets[0]).toMatchObject({
+      repsMin: 8,
+      targetRir: 2,
+      trainingMethod: "eccentric",
+    });
   });
 
   it("requires an exercise on every configured day", () => {

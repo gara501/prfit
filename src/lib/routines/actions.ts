@@ -77,6 +77,7 @@ export async function saveRoutineDraft(
     p_days_at_week: daysAtWeek,
     p_exercises: exercises,
     p_effort_metric: effortMetric,
+    p_training_methods: exercises,
   });
 
   if (error || typeof data !== "string") {

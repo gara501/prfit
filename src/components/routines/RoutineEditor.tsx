@@ -10,6 +10,11 @@ import {
   saveRoutineDraft,
   saveRoutineTemplate,
 } from "@/lib/routines/actions";
+import {
+  getTrainingMethod,
+  type TrainingMethod,
+  trainingMethodGroups,
+} from "@/lib/routines/training-methods";
 import type {
   ExerciseOption,
   RoutineClient,
@@ -25,6 +30,7 @@ type EditableSet = {
   weight: string;
   targetEffort: string;
   setType: "warmup" | "ramp_up" | "working" | "drop_set" | "amrap";
+  trainingMethod: TrainingMethod;
   tempo: string;
   isOptional: boolean;
 };
@@ -51,6 +57,7 @@ const emptySet = (key: string): EditableSet => ({
   weight: "",
   targetEffort: "",
   setType: "working",
+  trainingMethod: "traditional",
   tempo: "",
   isOptional: false,
 });
@@ -76,6 +83,7 @@ function getInitialExercises(
           ? (set.targetRir?.toString() ?? "")
           : (set.targetRpe?.toString() ?? ""),
       setType: set.setType,
+      trainingMethod: set.trainingMethod,
       tempo: set.tempo,
       isOptional: set.isOptional,
     })),
@@ -144,6 +152,7 @@ export function RoutineEditor({
           target_rir: effortMetric === "rir" ? set.targetEffort : "",
           target_rpe: effortMetric === "rpe" ? set.targetEffort : "",
           set_type: set.setType,
+          training_method: set.trainingMethod,
           tempo: set.tempo,
           is_optional: set.isOptional,
         })),
@@ -769,11 +778,11 @@ function ExerciseCard({
                     ×
                   </button>
                 </div>
-                <div className="col-span-full grid gap-2 border-t border-slate-200 pt-3 sm:grid-cols-4">
+                <div className="col-span-full grid gap-3 border-t border-slate-200 pt-3 sm:grid-cols-2 xl:grid-cols-5">
                   <label className="text-xs font-bold text-slate-600">
                     Tipo de serie
                     <select
-                      className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-bold text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                      className="mt-1 block h-10 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-bold text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                       onChange={(event) =>
                         updateSet(set.key, {
                           setType: event.target.value as EditableSet["setType"],
@@ -788,18 +797,49 @@ function ExerciseCard({
                       <option value="amrap">AMRAP</option>
                     </select>
                   </label>
-                  <SetInput
-                    label={`${effortMetric.toUpperCase()} objetivo, serie ${setIndex + 1}`}
-                    min={effortMetric === "rir" ? "0" : "1"}
-                    value={set.targetEffort}
-                    onChange={(value) =>
-                      updateSet(set.key, { targetEffort: value })
-                    }
-                  />
+                  <label
+                    className="text-xs font-bold text-slate-600"
+                    htmlFor={`effort-${set.key}`}
+                  >
+                    {effortMetric.toUpperCase()} objetivo
+                    <input
+                      className="mt-1 block h-10 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-bold text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                      id={`effort-${set.key}`}
+                      max="10"
+                      min={effortMetric === "rir" ? "0" : "1"}
+                      onChange={(event) =>
+                        updateSet(set.key, { targetEffort: event.target.value })
+                      }
+                      type="number"
+                      value={set.targetEffort}
+                    />
+                  </label>
+                  <label className="text-xs font-bold text-slate-600">
+                    Método
+                    <select
+                      className="mt-1 block h-10 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-bold text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                      onChange={(event) =>
+                        updateSet(set.key, {
+                          trainingMethod: event.target.value as TrainingMethod,
+                        })
+                      }
+                      value={set.trainingMethod}
+                    >
+                      {trainingMethodGroups.map((group) => (
+                        <optgroup key={group.label} label={group.label}>
+                          {group.methods.map((method) => (
+                            <option key={method.value} value={method.value}>
+                              {method.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </label>
                   <label className="text-xs font-bold text-slate-600">
                     Tempo
                     <input
-                      className="mt-1 block w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-bold text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                      className="mt-1 block h-10 w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-sm font-bold text-slate-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
                       maxLength={16}
                       onChange={(event) =>
                         updateSet(set.key, { tempo: event.target.value })
@@ -819,6 +859,14 @@ function ExerciseCard({
                     />
                     Serie opcional
                   </label>
+                  {set.trainingMethod !== "traditional" ? (
+                    <p className="col-span-full text-xs leading-5 text-slate-500">
+                      <span className="font-black text-slate-700">
+                        {getTrainingMethod(set.trainingMethod).label}:
+                      </span>{" "}
+                      {getTrainingMethod(set.trainingMethod).description}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -860,7 +908,7 @@ function SetInput({
   return (
     <input
       aria-label={label}
-      className="min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2.5 text-center text-sm font-bold outline-none focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100 sm:px-3"
+      className="h-10 min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 text-center text-sm font-bold outline-none focus:border-orange-500 focus:bg-white focus:ring-2 focus:ring-orange-100 sm:px-3"
       min={min}
       onChange={(event) => onChange(event.target.value)}
       step={step}

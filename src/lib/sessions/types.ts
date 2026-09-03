@@ -1,3 +1,5 @@
+import type { TrainingMethod } from "@/lib/routines/training-methods";
+
 export type ClientRoutineOption = {
   id: string;
   name: string;
@@ -37,6 +39,7 @@ export type LiveWorkoutSet = {
   plannedWeight: number | null;
   plannedTargetEffort: number | null;
   setType: "warmup" | "ramp_up" | "working" | "drop_set" | "amrap";
+  trainingMethod: TrainingMethod;
   tempo: string;
   isOptional: boolean;
   actualEffort: number | null;
