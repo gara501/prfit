@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Dumbbell,
   History,
+  LibraryBig,
   Menu,
   Ruler,
   UserRound,
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 type NavigationIconName =
   | "users"
   | "routines"
+  | "exercises"
   | "sessions"
   | "connections"
   | "measurements"
@@ -76,6 +78,12 @@ const roleNavigation: Record<AppRole, NavigationGroup[]> = {
           label: "Rutinas",
           description: "Diseña y publica planes de entrenamiento.",
           icon: "routines",
+        },
+        {
+          href: "/trainer/exercises",
+          label: "Ejercicios",
+          description: "Administra el catálogo de movimientos.",
+          icon: "exercises",
         },
         {
           href: "/trainer/calendar",
@@ -388,6 +396,7 @@ function NavigationIcon({ icon }: { icon: NavigationIconName }) {
   const Icon = {
     users: UsersRound,
     routines: Dumbbell,
+    exercises: LibraryBig,
     sessions: ClipboardList,
     connections: UsersRound,
     measurements: Ruler,
