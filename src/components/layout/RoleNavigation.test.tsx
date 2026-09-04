@@ -30,6 +30,9 @@ describe("RoleNavigation", () => {
       0,
     );
     expect(
+      screen.getAllByRole("link", { name: /Ejercicios/i }),
+    ).not.toHaveLength(0);
+    expect(
       screen.getAllByRole("link", { name: /Mi perfil/i }),
     ).not.toHaveLength(0);
   });
