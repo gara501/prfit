@@ -28,8 +28,8 @@ export function AppShell({
   displayName: string;
 }) {
   return (
-    <div className="min-h-screen bg-[#f4f6f1] text-slate-950">
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/95 shadow-[0_8px_30px_-24px_rgba(15,23,42,0.6)] backdrop-blur">
+    <div className="min-h-screen bg-surface-subtle text-foreground">
+      <header className="sticky top-0 z-50 border-b border-border bg-card/95 shadow-raised backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 px-4 sm:px-8 lg:min-h-20 lg:flex-nowrap lg:px-12">
           <Link
             href={roleHome[userRole]}
@@ -58,7 +58,7 @@ export function AppShell({
             {roleLabels[userRole]}
           </span>
 
-          <div className="order-3 w-full overflow-x-auto border-t border-slate-100 py-2 lg:order-none lg:ml-auto lg:w-auto lg:border-0 lg:py-0">
+          <div className="order-3 relative w-full border-t border-border py-2 lg:order-none lg:ml-auto lg:w-auto lg:border-0 lg:py-0">
             <RoleNavigation userRole={userRole} />
           </div>
 
