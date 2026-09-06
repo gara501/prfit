@@ -1,3 +1,5 @@
+import { Archive } from "lucide-react";
+import Link from "next/link";
 import { CreateUserForm } from "@/components/users/CreateUserForm";
 import { DeactivateUserButton } from "@/components/users/DeactivateUserButton";
 import {
@@ -156,20 +158,35 @@ export async function AdminUsersDirectory({
                             {user.isActive ? "Activo" : "Inactivo"}
                           </span>
                         </td>
-                        <td className="px-7 py-5 text-right">
-                          <DeactivateUserButton
-                            disabledReason={
-                              !user.isActive
-                                ? "Ya inactivo"
-                                : user.id === currentUserId
-                                  ? "Tu cuenta"
-                                  : user.role === "admin"
-                                    ? "Protegido"
-                                    : undefined
-                            }
-                            userId={user.id}
-                            userName={getDisplayName(user)}
-                          />
+                        <td className="px-7 py-5">
+                          <div className="flex items-center justify-end gap-2">
+                            {user.role === "client" ? (
+                              <Link
+                                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                                href={`/api/exports/client-data?clientId=${user.id}`}
+                                title="Descargar copia formal de datos"
+                              >
+                                <Archive
+                                  aria-hidden="true"
+                                  className="size-4"
+                                />
+                                Exportar datos
+                              </Link>
+                            ) : null}
+                            <DeactivateUserButton
+                              disabledReason={
+                                !user.isActive
+                                  ? "Ya inactivo"
+                                  : user.id === currentUserId
+                                    ? "Tu cuenta"
+                                    : user.role === "admin"
+                                      ? "Protegido"
+                                      : undefined
+                              }
+                              userId={user.id}
+                              userName={getDisplayName(user)}
+                            />
+                          </div>
                         </td>
                       </tr>
                     ))}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import { ExerciseCreatePanel } from "@/components/exercises/ExerciseCreateForm";
 import { ExerciseVideoButton } from "@/components/exercises/ExerciseVideoButton";
+import type { MicrocycleRoutineContext } from "@/lib/periodization/types";
 import {
   type RoutineActionState,
   saveRoutineDraft,
@@ -98,6 +99,7 @@ export function RoutineEditor({
   starterTemplate = null,
   template = null,
   mode = "routine",
+  periodizationContext = null,
 }: {
   clients: RoutineClient[];
   defaultClientId?: string;
@@ -106,8 +108,10 @@ export function RoutineEditor({
   starterTemplate?: RoutineTemplateDetail | null;
   template?: RoutineTemplateDetail | null;
   mode?: "routine" | "template";
+  periodizationContext?: MicrocycleRoutineContext | null;
 }) {
   const isTemplateEditor = mode === "template";
+  const isPeriodized = Boolean(routine?.microcycleId || periodizationContext);
   const source = isTemplateEditor ? template : (routine ?? starterTemplate);
   const [state, formAction, isPending] = useActionState(
     isTemplateEditor ? saveRoutineTemplate : saveRoutineDraft,
@@ -232,6 +236,13 @@ export function RoutineEditor({
     <div className="min-h-[calc(100vh-5rem)] bg-surface-subtle px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
       <form action={formAction} className="mx-auto max-w-7xl">
         <input name="routineId" type="hidden" value={routine?.id ?? ""} />
+        <input
+          name="microcycleId"
+          type="hidden"
+          value={
+            routine?.microcycleId ?? periodizationContext?.microcycleId ?? ""
+          }
+        />
         <input name="templateId" type="hidden" value={template?.id ?? ""} />
         <input name="exercises" type="hidden" value={serializedExercises} />
 
@@ -281,6 +292,29 @@ export function RoutineEditor({
           </button>
         </header>
 
+        {periodizationContext ? (
+          <section className="mb-6 flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 text-card-foreground sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-accent-foreground">
+                Semana {periodizationContext.weekNumber} ·{" "}
+                {periodizationContext.mesocycleName}
+              </p>
+              <p className="mt-1 text-sm font-black">
+                {periodizationContext.planName}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Esta rutina quedará vinculada al microciclo seleccionado.
+              </p>
+            </div>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-4 text-sm font-black hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              href={`/trainer/periodization/${periodizationContext.planId}`}
+            >
+              Ver planificación
+            </Link>
+          </section>
+        ) : null}
+
         {state.message ? (
           <p
             aria-live="polite"
@@ -300,7 +334,12 @@ export function RoutineEditor({
                 <Field htmlFor="routine-name" label="Nombre">
                   <input
                     className={inputClass}
-                    defaultValue={source?.name ?? ""}
+                    defaultValue={
+                      source?.name ??
+                      (periodizationContext
+                        ? `Semana ${periodizationContext.weekNumber} · ${periodizationContext.mesocycleName}`
+                        : "")
+                    }
                     id="routine-name"
                     maxLength={120}
                     name="name"
@@ -313,8 +352,9 @@ export function RoutineEditor({
                     <select
                       className={inputClass}
                       defaultValue={routine?.clientId ?? defaultClientId ?? ""}
+                      disabled={isPeriodized}
                       id="routine-client"
-                      name="clientId"
+                      name={isPeriodized ? undefined : "clientId"}
                       required
                     >
                       <option disabled value="">
@@ -326,6 +366,13 @@ export function RoutineEditor({
                         </option>
                       ))}
                     </select>
+                    {isPeriodized ? (
+                      <input
+                        name="clientId"
+                        type="hidden"
+                        value={routine?.clientId ?? defaultClientId ?? ""}
+                      />
+                    ) : null}
                   </Field>
                 ) : null}
                 {!isTemplateEditor && clients.length === 0 ? (
@@ -365,13 +412,42 @@ export function RoutineEditor({
                   </select>
                 </Field>
                 {!isTemplateEditor ? (
+                  <Field htmlFor="routine-intensity" label="Intensidad general">
+                    <select
+                      className={inputClass}
+                      defaultValue={
+                        routine?.intensityLevel ??
+                        periodizationContext?.intensityLevel ??
+                        3
+                      }
+                      id="routine-intensity"
+                      name="intensityLevel"
+                    >
+                      <option value="1">1 · Muy baja</option>
+                      <option value="2">2 · Baja</option>
+                      <option value="3">3 · Moderada</option>
+                      <option value="4">4 · Alta</option>
+                      <option value="5">5 · Muy alta</option>
+                    </select>
+                    <span className="text-xs leading-5 text-muted-foreground">
+                      Los niveles 4–5 requieren revisar alertas de salud
+                      declaradas antes de publicar.
+                    </span>
+                  </Field>
+                ) : null}
+                {!isTemplateEditor ? (
                   <div className="grid grid-cols-2 gap-3">
                     <Field htmlFor="routine-start" label="Inicio">
                       <input
                         className={inputClass}
-                        defaultValue={routine?.startDate ?? today}
+                        defaultValue={
+                          routine?.startDate ??
+                          periodizationContext?.startDate ??
+                          today
+                        }
                         id="routine-start"
                         name="startDate"
+                        readOnly={isPeriodized}
                         required
                         type="date"
                       />
@@ -379,9 +455,14 @@ export function RoutineEditor({
                     <Field htmlFor="routine-end" label="Final">
                       <input
                         className={inputClass}
-                        defaultValue={routine?.endDate ?? ""}
+                        defaultValue={
+                          routine?.endDate ??
+                          periodizationContext?.endDate ??
+                          ""
+                        }
                         id="routine-end"
                         name="endDate"
+                        readOnly={isPeriodized}
                         type="date"
                       />
                     </Field>

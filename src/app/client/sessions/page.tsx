@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import Link from "next/link";
 import { startWorkoutSession } from "@/lib/sessions/actions";
 import { getClientSessionsHome } from "@/lib/sessions/queries";
@@ -82,6 +83,13 @@ export default async function ClientSessionsPage({
                       {routine.description ||
                         "Plan preparado por tu entrenador."}
                     </p>
+                    <a
+                      className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-black hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                      href={`/api/reports/routines/${routine.id}`}
+                    >
+                      <Download aria-hidden="true" className="size-4" />
+                      Descargar rutina PDF
+                    </a>
                   </div>
                   <div className="border-t border-slate-200 bg-slate-50 p-4">
                     <p className="mb-3 px-1 text-xs font-bold text-slate-500">

@@ -1,3 +1,4 @@
+import { Download } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExerciseVideoButton } from "@/components/exercises/ExerciseVideoButton";
@@ -83,10 +84,19 @@ export default async function RoutineDetailPage({
                 {routine.description || "Sin descripción adicional."}
               </p>
             </div>
-            <RoutineVersionActions
-              routineId={routine.id}
-              status={routine.status}
-            />
+            <div className="flex flex-wrap gap-3">
+              <a
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-700 px-4 py-3 text-sm font-black text-white hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
+                href={`/api/reports/routines/${routine.id}`}
+              >
+                <Download aria-hidden="true" className="size-4" />
+                Descargar PDF
+              </a>
+              <RoutineVersionActions
+                routineId={routine.id}
+                status={routine.status}
+              />
+            </div>
           </div>
           <dl className="grid grid-cols-2 border-t border-slate-800 sm:grid-cols-4">
             <Summary label="Ejercicios" value={routine.exercises.length} />

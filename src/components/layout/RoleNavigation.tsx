@@ -1,12 +1,15 @@
 "use client";
 
 import {
+  Archive,
   Award,
+  CalendarClock,
   CalendarDays,
   ChartNoAxesCombined,
   ChevronDown,
   ClipboardList,
   Dumbbell,
+  HeartPulse,
   History,
   LibraryBig,
   Menu,
@@ -30,7 +33,10 @@ type NavigationIconName =
   | "history"
   | "progression"
   | "calendar"
+  | "periodization"
   | "achievements"
+  | "health"
+  | "data"
   | "profile";
 
 type NavigationItem = {
@@ -50,6 +56,12 @@ const roleNavigation: Record<AppRole, NavigationGroup[]> = {
     {
       label: "Administración",
       items: [
+        {
+          href: "/trainer/periodization",
+          label: "Periodización",
+          description: "Planifica mesociclos y semanas de carga.",
+          icon: "periodization",
+        },
         {
           href: "/admin/users",
           label: "Usuarios",
@@ -110,6 +122,23 @@ const roleNavigation: Record<AppRole, NavigationGroup[]> = {
           description: "Registra controles de composición corporal.",
           icon: "measurements",
         },
+        {
+          href: "/trainer/medical",
+          label: "Salud",
+          description: "Revisa evaluaciones preventivas y autorizaciones.",
+          icon: "health",
+        },
+      ],
+    },
+    {
+      label: "Bienestar",
+      items: [
+        {
+          href: "/client/health",
+          label: "Salud",
+          description: "Actualiza tu evaluación preventiva.",
+          icon: "health",
+        },
       ],
     },
     {
@@ -162,6 +191,17 @@ const roleNavigation: Record<AppRole, NavigationGroup[]> = {
           label: "Logros",
           description: "Consulta tu racha y medallas obtenidas.",
           icon: "achievements",
+        },
+      ],
+    },
+    {
+      label: "Cuenta",
+      items: [
+        {
+          href: "/client/data",
+          label: "Mis datos",
+          description: "Descarga una copia de tu información.",
+          icon: "data",
         },
       ],
     },
@@ -411,7 +451,10 @@ function NavigationIcon({ icon }: { icon: NavigationIconName }) {
     history: History,
     progression: ChartNoAxesCombined,
     calendar: CalendarDays,
+    periodization: CalendarClock,
     achievements: Award,
+    health: HeartPulse,
+    data: Archive,
     profile: UserRound,
   }[icon];
 

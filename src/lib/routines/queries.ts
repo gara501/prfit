@@ -32,7 +32,7 @@ export async function getTrainerRoutines(): Promise<{
   const { data, error } = await supabase
     .from("routines")
     .select(
-      "id, plan_id, version_number, status, published_at, supersedes_routine_id, client_id, name, description, start_date, end_date, days_at_week, effort_metric, is_active, client:profiles!routines_client_id_fkey(first_name, last_name), routine_exercises(count)",
+      "id, microcycle_id, plan_id, version_number, status, published_at, supersedes_routine_id, client_id, name, description, start_date, end_date, days_at_week, effort_metric, intensity_level, is_active, client:profiles!routines_client_id_fkey(first_name, last_name), routine_exercises(count)",
     )
     .order("start_date", { ascending: false });
 
@@ -46,6 +46,7 @@ export async function getTrainerRoutines(): Promise<{
 
     return {
       id: routine.id,
+      microcycleId: routine.microcycle_id ?? "",
       planId: routine.plan_id,
       versionNumber: routine.version_number,
       status: routine.status as RoutineVersionStatus,
@@ -60,6 +61,7 @@ export async function getTrainerRoutines(): Promise<{
       daysAtWeek: routine.days_at_week,
       effortMetric: routine.effort_metric as EffortMetric,
       isActive: routine.is_active,
+      intensityLevel: routine.intensity_level,
       exerciseCount: countRelation[0]?.count ?? 0,
     } satisfies RoutineListItem;
   });
@@ -189,7 +191,7 @@ export async function getRoutineWorkspace(routineId?: string): Promise<{
     ? supabase
         .from("routines")
         .select(
-          "id, plan_id, version_number, status, published_at, supersedes_routine_id, client_id, name, description, start_date, end_date, days_at_week, effort_metric, is_active, client:profiles!routines_client_id_fkey(first_name, last_name), routine_exercises(id, day_number, exercise_id, order_index, technique_notes, exercise:exercises!routine_exercises_exercise_id_fkey(id, name, video_url), routine_exercise_sets(id, set_number, reps, reps_min, reps_max, rest_seconds, weight, target_rir, target_rpe, set_type, training_method, tempo, is_optional))",
+          "id, microcycle_id, plan_id, version_number, status, published_at, supersedes_routine_id, client_id, name, description, start_date, end_date, days_at_week, effort_metric, intensity_level, is_active, client:profiles!routines_client_id_fkey(first_name, last_name), routine_exercises(id, day_number, exercise_id, order_index, technique_notes, exercise:exercises!routine_exercises_exercise_id_fkey(id, name, video_url), routine_exercise_sets(id, set_number, reps, reps_min, reps_max, rest_seconds, weight, target_rir, target_rpe, set_type, training_method, tempo, is_optional))",
         )
         .eq("id", routineId)
         .single()
@@ -322,6 +324,7 @@ export async function getRoutineWorkspace(routineId?: string): Promise<{
     exercises,
     routine: {
       id: rawRoutine.id,
+      microcycleId: rawRoutine.microcycle_id ?? "",
       planId: rawRoutine.plan_id,
       versionNumber: rawRoutine.version_number,
       status: rawRoutine.status as RoutineVersionStatus,
@@ -336,6 +339,7 @@ export async function getRoutineWorkspace(routineId?: string): Promise<{
       daysAtWeek: rawRoutine.days_at_week,
       effortMetric: rawRoutine.effort_metric as EffortMetric,
       isActive: rawRoutine.is_active,
+      intensityLevel: rawRoutine.intensity_level,
       exercises: routineExercises,
     },
     error: null,

@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { RoutineEditor } from "@/components/routines/RoutineEditor";
+import { getMicrocycleRoutineContext } from "@/lib/periodization/queries";
 import { getRoutineWorkspace } from "@/lib/routines/queries";
 
 export default async function EditRoutinePage({
@@ -16,11 +17,15 @@ export default async function EditRoutinePage({
   if (routine.status !== "draft") {
     redirect(`/trainer/routines/${routine.id}`);
   }
+  const periodizationContext = routine.microcycleId
+    ? await getMicrocycleRoutineContext(routine.microcycleId)
+    : null;
 
   return (
     <RoutineEditor
       clients={clients}
       exerciseOptions={exercises}
+      periodizationContext={periodizationContext}
       routine={routine}
     />
   );

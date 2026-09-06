@@ -1,4 +1,4 @@
-import { Dumbbell, Pencil, Plus } from "lucide-react";
+import { Dumbbell, FileDown, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RoutineVersionActions } from "@/components/routines/RoutineVersionActions";
@@ -64,12 +64,27 @@ export default async function TrainerClientDetailPage({
                 </span>
               </div>
             </div>
-            <Link
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-black text-primary-foreground hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              href={`/trainer/measurements?client=${client.id}`}
-            >
-              Registrar medición
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <Link
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 text-sm font-black hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                href={`/trainer/clients/${client.id}/reports`}
+              >
+                <FileDown aria-hidden="true" className="size-4" />
+                Crear reporte
+              </Link>
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border px-4 py-3 text-sm font-black hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                href={`/trainer/medical/${client.id}`}
+              >
+                Revisar salud
+              </Link>
+              <Link
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-black text-primary-foreground hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                href={`/trainer/measurements?client=${client.id}`}
+              >
+                Registrar medición
+              </Link>
+            </div>
           </div>
         </header>
 

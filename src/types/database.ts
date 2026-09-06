@@ -119,6 +119,162 @@ export type Database = {
         };
         Relationships: [];
       };
+      health_audit_events: {
+        Row: {
+          action: string;
+          actor_id: string | null;
+          client_id: string;
+          created_at: string;
+          id: number;
+          screening_id: string | null;
+        };
+        Insert: {
+          action: string;
+          actor_id?: string | null;
+          client_id: string;
+          created_at?: string;
+          id?: never;
+          screening_id?: string | null;
+        };
+        Update: {
+          action?: string;
+          actor_id?: string | null;
+          client_id?: string;
+          created_at?: string;
+          id?: never;
+          screening_id?: string | null;
+        };
+        Relationships: [];
+      };
+      health_documents: {
+        Row: {
+          client_id: string;
+          created_at: string;
+          id: string;
+          mime_type: string;
+          original_name: string;
+          purpose: string;
+          screening_id: string;
+          size_bytes: number;
+          storage_path: string;
+          uploaded_by: string;
+        };
+        Insert: {
+          client_id: string;
+          created_at?: string;
+          id?: string;
+          mime_type: string;
+          original_name: string;
+          purpose: string;
+          screening_id: string;
+          size_bytes: number;
+          storage_path: string;
+          uploaded_by: string;
+        };
+        Update: {
+          client_id?: string;
+          created_at?: string;
+          id?: string;
+          mime_type?: string;
+          original_name?: string;
+          purpose?: string;
+          screening_id?: string;
+          size_bytes?: number;
+          storage_path?: string;
+          uploaded_by?: string;
+        };
+        Relationships: [];
+      };
+      health_screening_reviews: {
+        Row: {
+          decision: string;
+          encryption_iv: string | null;
+          encryption_key_version: number | null;
+          encryption_tag: string | null;
+          id: string;
+          notes_ciphertext: string | null;
+          reviewed_at: string;
+          screening_id: string;
+          trainer_id: string;
+        };
+        Insert: {
+          decision: string;
+          encryption_iv?: string | null;
+          encryption_key_version?: number | null;
+          encryption_tag?: string | null;
+          id?: string;
+          notes_ciphertext?: string | null;
+          reviewed_at?: string;
+          screening_id: string;
+          trainer_id: string;
+        };
+        Update: {
+          decision?: string;
+          encryption_iv?: string | null;
+          encryption_key_version?: number | null;
+          encryption_tag?: string | null;
+          id?: string;
+          notes_ciphertext?: string | null;
+          reviewed_at?: string;
+          screening_id?: string;
+          trainer_id?: string;
+        };
+        Relationships: [];
+      };
+      health_screenings: {
+        Row: {
+          client_id: string;
+          consent_version: string;
+          content_hash: string;
+          created_at: string;
+          encryption_iv: string;
+          encryption_key_version: number;
+          encryption_tag: string;
+          expires_at: string;
+          has_critical_risk: boolean;
+          id: string;
+          payload_ciphertext: string;
+          privacy_notice_version: string;
+          questionnaire_version: string;
+          submitted_at: string;
+          version: number;
+        };
+        Insert: {
+          client_id: string;
+          consent_version: string;
+          content_hash: string;
+          created_at?: string;
+          encryption_iv: string;
+          encryption_key_version?: number;
+          encryption_tag: string;
+          expires_at: string;
+          has_critical_risk: boolean;
+          id?: string;
+          payload_ciphertext: string;
+          privacy_notice_version: string;
+          questionnaire_version?: string;
+          submitted_at?: string;
+          version: number;
+        };
+        Update: {
+          client_id?: string;
+          consent_version?: string;
+          content_hash?: string;
+          created_at?: string;
+          encryption_iv?: string;
+          encryption_key_version?: number;
+          encryption_tag?: string;
+          expires_at?: string;
+          has_critical_risk?: boolean;
+          id?: string;
+          payload_ciphertext?: string;
+          privacy_notice_version?: string;
+          questionnaire_version?: string;
+          submitted_at?: string;
+          version?: number;
+        };
+        Relationships: [];
+      };
       exercise_body_zones: {
         Row: {
           body_zone_id: string;
@@ -207,6 +363,70 @@ export type Database = {
             columns: ["created_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      export_audit_events: {
+        Row: {
+          anonymized: boolean;
+          approximate_size_bytes: number | null;
+          client_id: string;
+          created_at: string;
+          export_type: string;
+          id: number;
+          period_end: string | null;
+          period_start: string | null;
+          requester_id: string;
+          result: string;
+          routine_id: string | null;
+        };
+        Insert: {
+          anonymized?: boolean;
+          approximate_size_bytes?: number | null;
+          client_id: string;
+          created_at?: string;
+          export_type: string;
+          id?: never;
+          period_end?: string | null;
+          period_start?: string | null;
+          requester_id: string;
+          result: string;
+          routine_id?: string | null;
+        };
+        Update: {
+          anonymized?: boolean;
+          approximate_size_bytes?: number | null;
+          client_id?: string;
+          created_at?: string;
+          export_type?: string;
+          id?: never;
+          period_end?: string | null;
+          period_start?: string | null;
+          requester_id?: string;
+          result?: string;
+          routine_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "export_audit_events_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "export_audit_events_requester_id_fkey";
+            columns: ["requester_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "export_audit_events_routine_id_fkey";
+            columns: ["routine_id"];
+            isOneToOne: false;
+            referencedRelation: "routines";
             referencedColumns: ["id"];
           },
         ];
@@ -635,7 +855,9 @@ export type Database = {
           effort_metric: string;
           end_date: string | null;
           id: string;
+          intensity_level: number;
           is_active: boolean;
+          microcycle_id: string | null;
           name: string;
           plan_id: string;
           published_at: string | null;
@@ -652,7 +874,9 @@ export type Database = {
           effort_metric?: string;
           end_date?: string | null;
           id?: string;
+          intensity_level?: number;
           is_active?: boolean;
+          microcycle_id?: string | null;
           name: string;
           plan_id: string;
           published_at?: string | null;
@@ -669,7 +893,9 @@ export type Database = {
           effort_metric?: string;
           end_date?: string | null;
           id?: string;
+          intensity_level?: number;
           is_active?: boolean;
+          microcycle_id?: string | null;
           name?: string;
           plan_id?: string;
           published_at?: string | null;
@@ -680,6 +906,13 @@ export type Database = {
           version_number?: number;
         };
         Relationships: [
+          {
+            foreignKeyName: "routines_microcycle_id_fkey";
+            columns: ["microcycle_id"];
+            isOneToOne: false;
+            referencedRelation: "training_microcycles";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "routines_client_id_fkey";
             columns: ["client_id"];
@@ -1139,11 +1372,189 @@ export type Database = {
           },
         ];
       };
+      training_plans: {
+        Row: {
+          client_id: string;
+          created_at: string;
+          end_date: string;
+          goal: string | null;
+          id: string;
+          name: string;
+          start_date: string;
+          status: string;
+          trainer_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          client_id: string;
+          created_at?: string;
+          end_date: string;
+          goal?: string | null;
+          id?: string;
+          name: string;
+          start_date: string;
+          status?: string;
+          trainer_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          client_id?: string;
+          created_at?: string;
+          end_date?: string;
+          goal?: string | null;
+          id?: string;
+          name?: string;
+          start_date?: string;
+          status?: string;
+          trainer_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "training_plans_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "training_plans_trainer_id_fkey";
+            columns: ["trainer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      training_mesocycles: {
+        Row: {
+          created_at: string;
+          end_date: string;
+          focus: string;
+          id: string;
+          intensity_level: number;
+          name: string;
+          objective: string | null;
+          position: number;
+          start_date: string;
+          training_plan_id: string;
+          updated_at: string;
+          volume_level: number;
+        };
+        Insert: {
+          created_at?: string;
+          end_date: string;
+          focus: string;
+          id?: string;
+          intensity_level: number;
+          name: string;
+          objective?: string | null;
+          position: number;
+          start_date: string;
+          training_plan_id: string;
+          updated_at?: string;
+          volume_level: number;
+        };
+        Update: {
+          created_at?: string;
+          end_date?: string;
+          focus?: string;
+          id?: string;
+          intensity_level?: number;
+          name?: string;
+          objective?: string | null;
+          position?: number;
+          start_date?: string;
+          training_plan_id?: string;
+          updated_at?: string;
+          volume_level?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "training_mesocycles_training_plan_id_fkey";
+            columns: ["training_plan_id"];
+            isOneToOne: false;
+            referencedRelation: "training_plans";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      training_microcycles: {
+        Row: {
+          created_at: string;
+          end_date: string;
+          id: string;
+          intensity_level: number;
+          load_type: string;
+          mesocycle_id: string;
+          objective: string | null;
+          position: number;
+          start_date: string;
+          training_plan_id: string;
+          updated_at: string;
+          volume_level: number;
+          week_number: number;
+        };
+        Insert: {
+          created_at?: string;
+          end_date: string;
+          id?: string;
+          intensity_level: number;
+          load_type?: string;
+          mesocycle_id: string;
+          objective?: string | null;
+          position: number;
+          start_date: string;
+          training_plan_id: string;
+          updated_at?: string;
+          volume_level: number;
+          week_number: number;
+        };
+        Update: {
+          created_at?: string;
+          end_date?: string;
+          id?: string;
+          intensity_level?: number;
+          load_type?: string;
+          mesocycle_id?: string;
+          objective?: string | null;
+          position?: number;
+          start_date?: string;
+          training_plan_id?: string;
+          updated_at?: string;
+          volume_level?: number;
+          week_number?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "training_microcycles_mesocycle_id_training_plan_id_fkey";
+            columns: ["mesocycle_id", "training_plan_id"];
+            isOneToOne: false;
+            referencedRelation: "training_mesocycles";
+            referencedColumns: ["id", "training_plan_id"];
+          },
+          {
+            foreignKeyName: "training_microcycles_training_plan_id_fkey";
+            columns: ["training_plan_id"];
+            isOneToOne: false;
+            referencedRelation: "training_plans";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      activate_periodization_plan: {
+        Args: { p_plan_id: string };
+        Returns: string;
+      };
+      archive_periodization_plan: {
+        Args: { p_plan_id: string };
+        Returns: string;
+      };
       abandon_workout_session: {
         Args: { p_session_id: string };
         Returns: string;
@@ -1269,6 +1680,17 @@ export type Database = {
           p_routine_id: string;
           p_start_date: string;
           p_training_methods: Json;
+        };
+        Returns: string;
+      };
+      save_periodization_plan: {
+        Args: {
+          p_client_id: string;
+          p_goal: string;
+          p_mesocycles: Json;
+          p_name: string;
+          p_plan_id: string | null;
+          p_start_date: string;
         };
         Returns: string;
       };

@@ -45,6 +45,7 @@ export type RoutineExercise = {
 
 export type RoutineDetail = {
   id: string;
+  microcycleId: string;
   planId: string;
   versionNumber: number;
   status: RoutineVersionStatus;
@@ -59,6 +60,7 @@ export type RoutineDetail = {
   daysAtWeek: number | null;
   effortMetric: EffortMetric;
   isActive: boolean;
+  intensityLevel: number;
   exercises: RoutineExercise[];
 };
 

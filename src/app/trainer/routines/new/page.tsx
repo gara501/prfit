@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { RoutineEditor } from "@/components/routines/RoutineEditor";
+import { getMicrocycleRoutineContext } from "@/lib/periodization/queries";
 import {
   getRoutineTemplates,
   getRoutineTemplateWorkspace,
@@ -9,15 +10,24 @@ import {
 export default async function NewRoutinePage({
   searchParams,
 }: {
-  searchParams: Promise<{ client?: string; template?: string }>;
+  searchParams: Promise<{
+    client?: string;
+    microcycle?: string;
+    template?: string;
+  }>;
 }) {
-  const { client, template: templateId } = await searchParams;
-  const [{ clients, exercises, error }, templatesResult] = await Promise.all([
-    getRoutineWorkspace(),
-    getRoutineTemplates(),
-  ]);
-  const defaultClientId = clients.some((item) => item.id === client)
-    ? client
+  const { client, microcycle, template: templateId } = await searchParams;
+  const [{ clients, exercises, error }, templatesResult, context] =
+    await Promise.all([
+      getRoutineWorkspace(),
+      getRoutineTemplates(),
+      microcycle
+        ? getMicrocycleRoutineContext(microcycle)
+        : Promise.resolve(null),
+    ]);
+  const requestedClient = context?.clientId ?? client;
+  const defaultClientId = clients.some((item) => item.id === requestedClient)
+    ? requestedClient
     : undefined;
   const selectedTemplateResult = templateId
     ? await getRoutineTemplateWorkspace(templateId)
@@ -64,6 +74,13 @@ export default async function NewRoutinePage({
             {defaultClientId ? (
               <input name="client" type="hidden" value={defaultClientId} />
             ) : null}
+            {context ? (
+              <input
+                name="microcycle"
+                type="hidden"
+                value={context.microcycleId}
+              />
+            ) : null}
             <label className="sr-only" htmlFor="routine-template-selector">
               Plantilla de rutina
             </label>
@@ -104,6 +121,7 @@ export default async function NewRoutinePage({
         key={selectedTemplate?.id ?? "custom"}
         routine={null}
         starterTemplate={selectedTemplate}
+        periodizationContext={context}
       />
     </>
   );

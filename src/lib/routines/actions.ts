@@ -27,6 +27,7 @@ export async function saveRoutineDraft(
 ): Promise<RoutineActionState> {
   await requireRole("trainer");
   const routineId = text(formData, "routineId");
+  const microcycleId = text(formData, "microcycleId");
   const clientId = text(formData, "clientId");
   const name = text(formData, "name");
   const description = text(formData, "description");
@@ -34,17 +35,22 @@ export async function saveRoutineDraft(
   const endDate = text(formData, "endDate");
   const daysAtWeek = Number(text(formData, "daysAtWeek"));
   const effortMetric = text(formData, "effortMetric");
+  const intensityLevel = Number(text(formData, "intensityLevel"));
   const exercisesJson = text(formData, "exercises");
 
   if (
     (routineId && !uuidPattern.test(routineId)) ||
+    (microcycleId && !uuidPattern.test(microcycleId)) ||
     !uuidPattern.test(clientId) ||
     !name ||
     !startDate ||
     !Number.isInteger(daysAtWeek) ||
     daysAtWeek < 1 ||
     daysAtWeek > 7 ||
-    !["rir", "rpe"].includes(effortMetric)
+    !["rir", "rpe"].includes(effortMetric) ||
+    !Number.isInteger(intensityLevel) ||
+    intensityLevel < 1 ||
+    intensityLevel > 5
   ) {
     return {
       status: "error",
@@ -85,6 +91,34 @@ export async function saveRoutineDraft(
       status: "error",
       message: error?.message ?? "No fue posible guardar el borrador.",
     };
+  }
+
+  {
+    const assignment = await supabase
+      .from("routines")
+      .update({
+        intensity_level: intensityLevel,
+        ...(microcycleId ? { microcycle_id: microcycleId } : {}),
+      })
+      .eq("id", data)
+      .eq("status", "draft")
+      .select("id")
+      .maybeSingle();
+    if (assignment.error || !assignment.data) {
+      if (!routineId) {
+        await supabase
+          .from("routines")
+          .delete()
+          .eq("id", data)
+          .eq("status", "draft");
+      }
+      return {
+        status: "error",
+        message:
+          assignment.error?.message ??
+          "No fue posible guardar la intensidad de la rutina.",
+      };
+    }
   }
 
   revalidateRoutineViews();
@@ -251,6 +285,7 @@ function revalidateRoutineViews() {
   revalidatePath("/trainer");
   revalidatePath("/trainer/routines");
   revalidatePath("/trainer/routines/templates");
+  revalidatePath("/trainer/periodization");
   revalidatePath("/client");
   revalidatePath("/client/sessions");
 }
