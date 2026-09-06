@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Award,
   CalendarDays,
   ChartNoAxesCombined,
   ChevronDown,
@@ -29,6 +30,7 @@ type NavigationIconName =
   | "history"
   | "progression"
   | "calendar"
+  | "achievements"
   | "profile";
 
 type NavigationItem = {
@@ -154,6 +156,12 @@ const roleNavigation: Record<AppRole, NavigationGroup[]> = {
           label: "Historial",
           description: "Compara tus sesiones y marcas anteriores.",
           icon: "history",
+        },
+        {
+          href: "/client/achievements",
+          label: "Logros",
+          description: "Consulta tu racha y medallas obtenidas.",
+          icon: "achievements",
         },
       ],
     },
@@ -403,6 +411,7 @@ function NavigationIcon({ icon }: { icon: NavigationIconName }) {
     history: History,
     progression: ChartNoAxesCombined,
     calendar: CalendarDays,
+    achievements: Award,
     profile: UserRound,
   }[icon];
 

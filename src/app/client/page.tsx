@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { StreakSummary } from "@/components/gamification/StreakSummary";
 import { ProgressChart } from "@/components/measurements/ProgressChart";
+import { getClientGamification } from "@/lib/gamification/queries";
 import { getClientDashboardData } from "@/lib/measurements/queries";
 
 const dateFormatter = new Intl.DateTimeFormat("es-CO", {
@@ -9,8 +11,11 @@ const dateFormatter = new Intl.DateTimeFormat("es-CO", {
 });
 
 export default async function ClientDashboardPage() {
-  const { measurements, activeRoutines, sessionCount, error } =
-    await getClientDashboardData();
+  const [dashboard, gamification] = await Promise.all([
+    getClientDashboardData(),
+    getClientGamification(),
+  ]);
+  const { measurements, activeRoutines, sessionCount, error } = dashboard;
   const latest = measurements.at(-1);
   const weightPoints = measurements.flatMap((measurement) =>
     measurement.weight === null
@@ -77,7 +82,17 @@ export default async function ClientDashboardPage() {
           />
         </section>
 
-        <section className="mt-6 grid gap-3 sm:grid-cols-3">
+        {gamification.error ? (
+          <p className="mt-6 rounded-xl border border-destructive/35 bg-destructive/10 p-4 text-sm font-bold text-destructive">
+            No fue posible cargar tu racha: {gamification.error}
+          </p>
+        ) : (
+          <div className="mt-6">
+            <StreakSummary summary={gamification.summary} />
+          </div>
+        )}
+
+        <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Link
             className="rounded-2xl border border-slate-300 bg-white px-5 py-4 text-sm font-black hover:border-orange-400"
             href="/client/calendar"
@@ -95,6 +110,12 @@ export default async function ClientDashboardPage() {
             href="/client/sessions"
           >
             Mis sesiones y feedback →
+          </Link>
+          <Link
+            className="rounded-2xl border border-slate-300 bg-white px-5 py-4 text-sm font-black hover:border-orange-400"
+            href="/client/achievements"
+          >
+            Racha y medallas →
           </Link>
         </section>
 

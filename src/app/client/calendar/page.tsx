@@ -1,15 +1,20 @@
+import { StreakSummary } from "@/components/gamification/StreakSummary";
 import {
   skipScheduledWorkout,
   startScheduledWorkout,
 } from "@/lib/calendar/actions";
 import { getClientCalendar } from "@/lib/calendar/queries";
+import { getClientGamification } from "@/lib/gamification/queries";
 export default async function ClientCalendarPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string; skipped?: string }>;
 }) {
   const params = await searchParams;
-  const data = await getClientCalendar();
+  const [data, gamification] = await Promise.all([
+    getClientCalendar(),
+    getClientGamification(),
+  ]);
   return (
     <main className="min-h-[calc(100vh-5rem)] bg-[#f4f6f1] px-4 py-8 sm:px-8 lg:px-12 lg:py-12">
       <div className="mx-auto max-w-5xl">
@@ -46,6 +51,15 @@ export default async function ClientCalendarPage({
             </p>
           </div>
         </div>
+        {gamification.error ? (
+          <p className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-800">
+            No fue posible cargar tu racha: {gamification.error}
+          </p>
+        ) : (
+          <div className="mb-6">
+            <StreakSummary compact summary={gamification.summary} />
+          </div>
+        )}
         <section className="overflow-hidden rounded-3xl border border-slate-300 bg-white">
           <div className="border-b border-slate-200 px-6 py-5">
             <h2 className="text-xl font-black">Próximas y recientes</h2>
