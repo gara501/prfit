@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RoleNavigation } from "./RoleNavigation";
@@ -50,5 +50,34 @@ describe("RoleNavigation", () => {
     await user.keyboard("{Escape}");
 
     expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("only exposes periodization to trainers", async () => {
+    const user = userEvent.setup();
+    const adminView = render(<RoleNavigation userRole="admin" />);
+
+    await user.click(
+      within(adminView.container).getByRole("button", {
+        name: /Navegar/i,
+      }),
+    );
+    expect(
+      within(adminView.container).queryByRole("link", {
+        name: /Periodización/i,
+      }),
+    ).not.toBeInTheDocument();
+
+    adminView.unmount();
+    const trainerView = render(<RoleNavigation userRole="trainer" />);
+    await user.click(
+      within(trainerView.container).getByRole("button", {
+        name: /Navegar/i,
+      }),
+    );
+    expect(
+      within(trainerView.container).getByRole("link", {
+        name: /Periodización/i,
+      }),
+    ).toHaveAttribute("href", "/trainer/periodization");
   });
 });

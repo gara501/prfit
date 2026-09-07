@@ -57,12 +57,6 @@ const roleNavigation: Record<AppRole, NavigationGroup[]> = {
       label: "Administración",
       items: [
         {
-          href: "/trainer/periodization",
-          label: "Periodización",
-          description: "Planifica mesociclos y semanas de carga.",
-          icon: "periodization",
-        },
-        {
           href: "/admin/users",
           label: "Usuarios",
           description: "Gestiona las cuentas de la plataforma.",
@@ -104,6 +98,12 @@ const roleNavigation: Record<AppRole, NavigationGroup[]> = {
           label: "Calendario",
           description: "Organiza el trabajo semanal.",
           icon: "calendar",
+        },
+        {
+          href: "/trainer/periodization",
+          label: "Periodización",
+          description: "Planifica mesociclos y semanas de carga.",
+          icon: "periodization",
         },
       ],
     },
