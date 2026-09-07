@@ -18,17 +18,16 @@ export async function assignClient(
 ): Promise<AssignmentFormState> {
   const account = await requireAuthenticatedAccount();
 
-  if (account.role === "client") {
+  if (account.role !== "admin") {
     return {
       status: "error",
-      message: "No tienes permiso para gestionar asignaciones.",
+      message: "Solo un administrador puede asignar clientes a un entrenador.",
     };
   }
 
   const clientId = formData.get("clientId");
   const selectedTrainerId = formData.get("trainerId");
-  const trainerId =
-    account.role === "trainer" ? account.user.id : selectedTrainerId;
+  const trainerId = selectedTrainerId;
 
   if (
     typeof clientId !== "string" ||

@@ -15,6 +15,8 @@ export async function startScheduledWorkout(formData: FormData) {
   const { data, error } = await supabase.rpc("start_scheduled_workout", {
     p_scheduled_workout_id: id,
   });
+  revalidatePath("/client");
+  revalidatePath("/client/calendar");
   redirect(
     error || !data
       ? `/client/calendar?error=${encodeURIComponent(error?.message ?? "No fue posible iniciar.")}`
@@ -64,6 +66,7 @@ export async function scheduleWorkout(formData: FormData) {
     scheduled_date: date,
   });
   revalidatePath("/trainer/calendar");
+  revalidatePath("/client");
   redirect(
     error
       ? `/trainer/calendar?error=${encodeURIComponent(error.message)}`

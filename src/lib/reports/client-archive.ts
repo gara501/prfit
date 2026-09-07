@@ -30,6 +30,7 @@ export async function prepareClientArchive(clientId: string) {
     scheduleResult,
     screeningsResult,
     documentsResult,
+    messagesResult,
   ] = await Promise.all([
     admin.from("profiles").select("*").eq("id", clientId).maybeSingle(),
     admin
@@ -82,6 +83,11 @@ export async function prepareClientArchive(clientId: string) {
       .select("*")
       .eq("client_id", clientId)
       .order("created_at"),
+    admin
+      .from("trainer_client_messages")
+      .select("*")
+      .eq("client_id", clientId)
+      .order("sent_at"),
   ]);
   const profile = profileResult.data;
   if (!profile || profile.role !== "client") return null;
@@ -213,6 +219,10 @@ export async function prepareClientArchive(clientId: string) {
     { name: "sesiones.csv", content: toCsv(sessions) },
     { name: "series_realizadas.csv", content: toCsv(enrichedSessionSets) },
     { name: "feedback.csv", content: toCsv(feedbackResult.data ?? []) },
+    {
+      name: "mensajes_trainer_cliente.csv",
+      content: toCsv(messagesResult.data ?? []),
+    },
     {
       name: "mediciones_corporales.csv",
       content: toCsv(measurementsResult.data ?? []),

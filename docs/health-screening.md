@@ -1,8 +1,8 @@
-# Evaluación preventiva de salud CardonaFit
+# Evaluación preventiva de salud PRFit
 
 ## Alcance
 
-Este módulo es una evaluación propia de CardonaFit para trainers freelance. No
+Este módulo es una evaluación propia de PRFit para trainers freelance. No
 es el PAR-Q+ oficial, no diagnostica y no reemplaza una consulta médica. El
 PAR-Q+ se ofrece únicamente como enlace al sitio oficial y como tipo de archivo
 adjunto, sin copiar ni modificar su cuestionario.
@@ -40,4 +40,3 @@ responsabilidad. Si cambian, se debe crear una versión nueva y conservar la
 aceptada en cada evaluación.
 
 Fuente oficial PAR-Q+: <https://eparmedx.com/print-versions-of-par-q/>
-

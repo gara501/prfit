@@ -47,22 +47,28 @@ export async function getTrainerDashboard(selectedClientId?: string): Promise<{
     .from("body_compositions")
     .select("id, client_id, date, weight, fat_percentage")
     .order("date", { ascending: false });
+  const contextsPromise = supabase
+    .from("trainer_client_private_contexts")
+    .select("client_id, goals, restrictions, private_notes");
   const [
     assignmentsResult,
     routinesResult,
     sessionsResult,
     measurementsResult,
+    contextsResult,
   ] = await Promise.all([
     assignmentsPromise,
     routinesPromise,
     sessionsPromise,
     measurementsPromise,
+    contextsPromise,
   ]);
   const error =
     assignmentsResult.error ??
     routinesResult.error ??
     sessionsResult.error ??
-    measurementsResult.error;
+    measurementsResult.error ??
+    contextsResult.error;
   if (error) return { clients: [], selected: null, error: error.message };
 
   const routinesByClient = groupBy(
@@ -76,6 +82,9 @@ export async function getTrainerDashboard(selectedClientId?: string): Promise<{
   const measurementsByClient = groupBy(
     measurementsResult.data ?? [],
     (row) => row.client_id,
+  );
+  const contextByClient = new Map(
+    (contextsResult.data ?? []).map((context) => [context.client_id, context]),
   );
   const today = new Date().toISOString().slice(0, 10);
 
@@ -122,6 +131,7 @@ export async function getTrainerDashboard(selectedClientId?: string): Promise<{
             ? null
             : Number(latestMeasurement.fat_percentage),
         latestMeasurementDate: latestMeasurement?.date ?? "",
+        activityStatus: getActivityStatus(sessions[0]?.date ?? "", today),
       } satisfies TrainerClientSummary;
     })
     .filter((client): client is TrainerClientSummary => client !== null)
@@ -185,9 +195,27 @@ export async function getTrainerDashboard(selectedClientId?: string): Promise<{
       routines: selectedRoutines,
       sessions: selectedSessions,
       measurements: selectedMeasurements,
+      context: {
+        goals: contextByClient.get(selectedClient.id)?.goals ?? "",
+        restrictions:
+          contextByClient.get(selectedClient.id)?.restrictions ?? "",
+        privateNotes:
+          contextByClient.get(selectedClient.id)?.private_notes ?? "",
+      },
     },
     error: null,
   };
+}
+
+function getActivityStatus(lastSessionDate: string, today: string) {
+  if (lastSessionDate === today) return "trained_today" as const;
+  if (!lastSessionDate) return "inactive" as const;
+  const daysSince = Math.floor(
+    (new Date(`${today}T12:00:00`).getTime() -
+      new Date(`${lastSessionDate}T12:00:00`).getTime()) /
+      86400000,
+  );
+  return daysSince >= 7 ? ("inactive" as const) : ("pending" as const);
 }
 
 function groupBy<T>(

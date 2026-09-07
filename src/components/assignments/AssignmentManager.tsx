@@ -1,27 +1,13 @@
-import { Plus } from "lucide-react";
-import Link from "next/link";
 import { AssignmentForm } from "@/components/assignments/AssignmentForm";
+import { ClientDirectory } from "@/components/assignments/ClientDirectory";
 import { CreateClientForm } from "@/components/trainer-dashboard/CreateClientForm";
-import {
-  type ClientAssignment,
-  getAssignmentManagementData,
-} from "@/lib/assignments/queries";
-
-const dateFormatter = new Intl.DateTimeFormat("es-CO", {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-});
-
-const getName = (firstName: string, lastName: string, fallback: string) =>
-  `${firstName} ${lastName}`.trim() || fallback;
+import { getAssignmentManagementData } from "@/lib/assignments/queries";
 
 export async function AssignmentManager() {
   const data = await getAssignmentManagementData();
   const activeCount = data.assignments.filter(
     (assignment) => assignment.assignmentId,
   ).length;
-  const availableCount = data.assignments.length - activeCount;
   const isAdmin = data.role === "admin";
 
   return (
@@ -38,13 +24,25 @@ export async function AssignmentManager() {
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
               {isAdmin
                 ? "Gestiona quién acompaña a cada cliente. Una transferencia cierra el vínculo anterior y activa el nuevo en una sola operación."
-                : "Vincula clientes disponibles a tu cuenta. Los clientes asignados a otro entrenador no aparecen en esta vista."}
+                : "Consulta los clientes que creaste o que un administrador asignó a tu cartera."}
             </p>
           </div>
 
-          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-300 bg-slate-300 shadow-sm">
-            <Stat label="Activos" value={activeCount} />
-            <Stat label="Disponibles" value={availableCount} />
+          <dl
+            className={`grid gap-px overflow-hidden rounded-2xl border border-slate-300 bg-slate-300 shadow-sm ${
+              isAdmin ? "grid-cols-2" : "grid-cols-1"
+            }`}
+          >
+            <Stat
+              label={isAdmin ? "Activos" : "Mis clientes"}
+              value={activeCount}
+            />
+            {isAdmin ? (
+              <Stat
+                label="Disponibles"
+                value={data.assignments.length - activeCount}
+              />
+            ) : null}
           </dl>
         </header>
 
@@ -77,29 +75,22 @@ export async function AssignmentManager() {
                   ↗
                 </span>
                 <p className="mt-5 text-lg font-black">
-                  No hay clientes para vincular
+                  {isAdmin
+                    ? "No hay clientes para vincular"
+                    : "Aún no tienes clientes"}
                 </p>
                 <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
                   {isAdmin
                     ? "Crea primero una cuenta con rol Cliente desde la pantalla de Usuarios."
-                    : "Crea un cliente desde el formulario lateral o espera a que haya uno disponible."}
+                    : "Crea un cliente desde el formulario lateral para incorporarlo automáticamente a tu cartera."}
                 </p>
               </div>
             ) : (
-              <ul className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6">
-                {data.assignments.map((assignment) => (
-                  <AssignmentRow
-                    canOpenRoutine={
-                      !isAdmin && assignment.trainerId === data.currentUserId
-                    }
-                    canOpenClientDetail={
-                      !isAdmin && assignment.trainerId === data.currentUserId
-                    }
-                    key={assignment.clientId}
-                    assignment={assignment}
-                  />
-                ))}
-              </ul>
+              <ClientDirectory
+                assignments={data.assignments}
+                currentUserId={data.currentUserId}
+                isAdmin={isAdmin}
+              />
             )}
           </section>
 
@@ -119,163 +110,29 @@ export async function AssignmentManager() {
               </aside>
             ) : null}
 
-            <aside className="rounded-3xl bg-slate-950 p-6 text-white shadow-[0_24px_60px_-34px_rgba(15,23,42,0.9)]">
-              <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-orange-400">
-                Nuevo vínculo
-              </p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight">
-                {isAdmin ? "Asignar o transferir" : "Tomar cliente"}
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                {isAdmin
-                  ? "Si el cliente ya tiene entrenador, el vínculo anterior se cerrará con la fecha de hoy."
-                  : "Solo puedes vincular clientes disponibles directamente a tu cuenta."}
-              </p>
+            {isAdmin ? (
+              <aside className="rounded-3xl bg-slate-950 p-6 text-white shadow-[0_24px_60px_-34px_rgba(15,23,42,0.9)]">
+                <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-orange-400">
+                  Nuevo vínculo
+                </p>
+                <h2 className="mt-2 text-2xl font-black tracking-tight">
+                  Asignar o transferir
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-400">
+                  Si el cliente ya tiene entrenador, el vínculo anterior se
+                  cerrará con la fecha de hoy.
+                </p>
 
-              <AssignmentForm
-                role={data.role}
-                currentUserId={data.currentUserId}
-                assignments={data.assignments}
-                trainers={data.trainers}
-              />
-            </aside>
+                <AssignmentForm
+                  assignments={data.assignments}
+                  trainers={data.trainers}
+                />
+              </aside>
+            ) : null}
           </div>
         </div>
       </div>
     </main>
-  );
-}
-
-function AssignmentRow({
-  assignment,
-  canOpenRoutine,
-  canOpenClientDetail,
-}: {
-  assignment: ClientAssignment;
-  canOpenRoutine: boolean;
-  canOpenClientDetail: boolean;
-}) {
-  const clientName = getName(
-    assignment.clientFirstName,
-    assignment.clientLastName,
-    "Cliente sin nombre",
-  );
-  const trainerName = getName(
-    assignment.trainerFirstName,
-    assignment.trainerLastName,
-    "Entrenador sin nombre",
-  );
-
-  return (
-    <li className="group flex min-h-64 flex-col rounded-3xl border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-[0_20px_45px_-36px_rgba(15,23,42,0.8)]">
-      <div className="flex items-start gap-3.5">
-        <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-slate-950 text-base font-black text-white transition group-hover:bg-orange-500 group-hover:text-slate-950">
-          {clientName.charAt(0).toUpperCase()}
-        </span>
-        <div className="min-w-0 flex-1">
-          {canOpenClientDetail ? (
-            <Link
-              className="block truncate text-lg font-black text-slate-900 underline-offset-4 hover:text-orange-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
-              href={`/trainer/clients/${assignment.clientId}`}
-            >
-              {clientName}
-            </Link>
-          ) : (
-            <p className="truncate text-lg font-black text-slate-900">
-              {clientName}
-            </p>
-          )}
-          <p className="mt-1 text-sm text-slate-500">
-            {assignment.assignmentId
-              ? `Con ${trainerName}`
-              : "Sin entrenador activo"}
-          </p>
-        </div>
-        <span
-          className={`rounded-full border px-2.5 py-1 text-xs font-bold ${
-            assignment.assignmentId
-              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-              : "border-amber-200 bg-amber-50 text-amber-800"
-          }`}
-        >
-          {assignment.assignmentId ? "Activo" : "Disponible"}
-        </span>
-      </div>
-
-      {assignment.assignmentId ? (
-        <dl className="mt-5 grid gap-3 rounded-2xl bg-slate-50 p-4 text-sm">
-          <ContactDetail label="Correo" value={assignment.clientEmail} />
-          <ContactDetail label="Teléfono" value={assignment.clientPhone} />
-        </dl>
-      ) : (
-        <p className="mt-5 rounded-2xl border border-dashed border-slate-200 px-4 py-5 text-xs leading-5 text-slate-400">
-          Los datos de contacto estarán disponibles cuando vincules este
-          cliente.
-        </p>
-      )}
-
-      <div className="mt-auto border-t border-slate-200 pt-4">
-        <p className="font-mono text-[9px] font-black uppercase tracking-[0.16em] text-slate-400">
-          Plan activo
-        </p>
-        {assignment.activeRoutineId && assignment.activeRoutineName ? (
-          canOpenRoutine ? (
-            <Link
-              className="mt-1 inline-flex items-center gap-2 text-sm font-black text-orange-700 hover:text-orange-900 hover:underline"
-              href={`/trainer/routines/${assignment.activeRoutineId}`}
-            >
-              {assignment.activeRoutineName}
-              <span aria-hidden="true">→</span>
-            </Link>
-          ) : (
-            <p className="mt-1 text-sm font-black text-slate-700">
-              {assignment.activeRoutineName}
-            </p>
-          )
-        ) : (
-          <p className="mt-1 text-sm font-bold text-slate-400">
-            Sin rutina activa
-          </p>
-        )}
-        {assignment.startDate ? (
-          <p className="mt-2 text-[11px] text-slate-400">
-            Vinculado desde{" "}
-            {dateFormatter.format(new Date(assignment.startDate))}
-          </p>
-        ) : null}
-        {canOpenClientDetail ? (
-          <div className="mt-4 grid gap-2 sm:grid-cols-2">
-            <Link
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-black text-white hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
-              href={`/trainer/clients/${assignment.clientId}`}
-            >
-              Abrir ficha
-              <span aria-hidden="true">→</span>
-            </Link>
-            <Link
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border-strong bg-card px-4 py-2.5 text-sm font-black text-card-foreground hover:border-primary hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              href={`/trainer/routines/new?client=${assignment.clientId}`}
-            >
-              <Plus aria-hidden="true" className="size-4" />
-              Crear rutina
-            </Link>
-          </div>
-        ) : null}
-      </div>
-    </li>
-  );
-}
-
-function ContactDetail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-2">
-      <dt className="font-mono text-[9px] font-black uppercase tracking-wider text-slate-400">
-        {label}
-      </dt>
-      <dd className="truncate font-bold text-slate-700">
-        {value || "Sin registrar"}
-      </dd>
-    </div>
   );
 }
 

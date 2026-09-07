@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { logout } from "@/lib/auth/actions";
 import type { AppRole } from "@/lib/auth/roles";
+import { MessageNotificationBell } from "./MessageNotificationBell";
 import { RoleNavigation } from "./RoleNavigation";
 
 const roleLabels: Record<AppRole, string> = {
@@ -22,10 +23,12 @@ export function AppShell({
   children,
   userRole,
   displayName,
+  userId,
 }: {
   children: ReactNode;
   userRole: AppRole;
   displayName: string;
+  userId: string;
 }) {
   return (
     <div className="min-h-screen bg-surface-subtle text-foreground">
@@ -73,6 +76,8 @@ export function AppShell({
             </div>
 
             <ThemeToggle />
+
+            <MessageNotificationBell userId={userId} userRole={userRole} />
 
             <form action={logout}>
               <button

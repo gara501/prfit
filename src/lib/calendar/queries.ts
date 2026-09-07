@@ -11,12 +11,40 @@ export async function getClientCalendar() {
   const { data, error } = await supabase
     .from("scheduled_workouts")
     .select(
-      "id, scheduled_date, day_number, status, routine:routines(name), workout_sessions(id, workout_session_sets(completed))",
+      "id, routine_id, scheduled_date, day_number, status, routine:routines(name), workout_sessions(id, workout_session_sets(completed))",
     )
     .eq("client_id", account.user.id)
     .gte("scheduled_date", from)
     .lte("scheduled_date", to)
     .order("scheduled_date");
+  const routineIds = [...new Set((data ?? []).map((row) => row.routine_id))];
+  const { data: prescribedSets, error: prescribedSetsError } = routineIds.length
+    ? await supabase
+        .from("routine_exercises")
+        .select("routine_id, day_number, routine_exercise_sets(id)")
+        .in("routine_id", routineIds)
+    : { data: [], error: null };
+  if (error || prescribedSetsError) {
+    return {
+      events: [],
+      completed: 0,
+      eligible: 0,
+      plannedSets: 0,
+      completedSets: 0,
+      error: error?.message ?? prescribedSetsError?.message ?? null,
+    };
+  }
+  const prescribedSetCount = new Map<string, number>();
+  for (const exercise of prescribedSets ?? []) {
+    const sets = exercise.routine_exercise_sets as unknown as Array<{
+      id: string;
+    }>;
+    const key = `${exercise.routine_id}:${exercise.day_number}`;
+    prescribedSetCount.set(
+      key,
+      (prescribedSetCount.get(key) ?? 0) + sets.length,
+    );
+  }
   const events = (data ?? []).map((row) => {
     const session = (
       row.workout_sessions as unknown as Array<{
@@ -33,7 +61,10 @@ export async function getClientCalendar() {
       routineName:
         (row.routine as unknown as { name: string } | null)?.name ?? "Rutina",
       sessionId: session?.id ?? "",
-      plannedSets: sets.length,
+      plannedSets:
+        sets.length ||
+        prescribedSetCount.get(`${row.routine_id}:${row.day_number}`) ||
+        0,
       completedSets: sets.filter((set) => set.completed).length,
     };
   });
@@ -49,6 +80,6 @@ export async function getClientCalendar() {
       (total, event) => total + event.completedSets,
       0,
     ),
-    error: error?.message ?? null,
+    error: null,
   };
 }

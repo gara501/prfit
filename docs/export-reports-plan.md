@@ -6,7 +6,7 @@ Permitir compartir rutinas y evolución de forma profesional, y entregar al clie
 
 ## Alcance implementado
 
-1. **Rutina en PDF**: documento A4 por versión, con identidad CardonaFit, vigencia, intensidad, RIR/RPE, ejercicios, series, métodos, tempo y notas. Disponible para el cliente propietario, su entrenador activo y administradores.
+1. **Rutina en PDF**: documento A4 por versión, con identidad PRFit, vigencia, intensidad, RIR/RPE, ejercicios, series, métodos, tempo y notas. Disponible para el cliente propietario, su entrenador activo y administradores.
 2. **Reporte de progreso**: constructor para trainers con rango máximo de 24 meses, ejercicios destacados, composición corporal opcional, notas y modo completo o anonimizado. El modo anonimizado omite identidad, salud y texto libre.
 3. **Copia de datos del cliente**: ZIP temporal con perfil, asignaciones, rutinas, sesiones, series, feedback, mediciones, progresiones, calendario, logros, evaluaciones de salud descifradas y documentos médicos originales. Disponible al cliente y al administrador.
 4. **Auditoría**: registro sin contenido sensible del solicitante, cliente, tipo, rango, anonimización, resultado y tamaño aproximado.

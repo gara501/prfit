@@ -6,10 +6,10 @@ export default async function TrainerLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { displayName } = await requireRole("trainer");
+  const { displayName, user } = await requireRole("trainer");
 
   return (
-    <AppShell userRole="trainer" displayName={displayName}>
+    <AppShell userRole="trainer" displayName={displayName} userId={user.id}>
       {children}
     </AppShell>
   );

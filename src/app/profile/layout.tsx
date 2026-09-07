@@ -6,10 +6,10 @@ export default async function ProfileLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { displayName, role } = await requireAuthenticatedAccount();
+  const { displayName, role, user } = await requireAuthenticatedAccount();
 
   return (
-    <AppShell userRole={role} displayName={displayName}>
+    <AppShell userRole={role} displayName={displayName} userId={user.id}>
       {children}
     </AppShell>
   );

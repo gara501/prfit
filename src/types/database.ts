@@ -997,6 +997,51 @@ export type Database = {
           },
         ];
       };
+      trainer_client_private_contexts: {
+        Row: {
+          client_id: string;
+          created_at: string;
+          goals: string;
+          private_notes: string;
+          restrictions: string;
+          trainer_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          client_id: string;
+          created_at?: string;
+          goals?: string;
+          private_notes?: string;
+          restrictions?: string;
+          trainer_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          client_id?: string;
+          created_at?: string;
+          goals?: string;
+          private_notes?: string;
+          restrictions?: string;
+          trainer_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trainer_client_private_contexts_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "trainer_client_private_contexts_trainer_id_fkey";
+            columns: ["trainer_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       trainer_client_exercise_notes: {
         Row: {
           client_id: string;

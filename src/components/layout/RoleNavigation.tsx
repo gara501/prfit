@@ -131,12 +131,12 @@ const roleNavigation: Record<AppRole, NavigationGroup[]> = {
       ],
     },
     {
-      label: "Bienestar",
+      label: "Salud",
       items: [
         {
-          href: "/client/health",
+          href: "/trainer/medical",
           label: "Salud",
-          description: "Actualiza tu evaluación preventiva.",
+          description: "Revisa evaluaciones preventivas y restricciones.",
           icon: "health",
         },
       ],
@@ -197,6 +197,12 @@ const roleNavigation: Record<AppRole, NavigationGroup[]> = {
     {
       label: "Cuenta",
       items: [
+        {
+          href: "/client/health",
+          label: "Salud",
+          description: "Completa o actualiza tu evaluación preventiva.",
+          icon: "health",
+        },
         {
           href: "/client/data",
           label: "Mis datos",

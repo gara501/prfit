@@ -1,4 +1,4 @@
-# CardonaFit
+# PRFit
 
 Aplicación web multiusuario para que entrenadores personales gestionen clientes,
 planifiquen ciclos de entrenamiento y hagan seguimiento de la ejecución, el
@@ -15,7 +15,7 @@ progreso corporal y la aptitud preventiva para la actividad física.
 
 ## Roles y acceso
 
-CardonaFit no tiene registro público. Las cuentas se crean administrativamente.
+PRFit no tiene registro público. Las cuentas se crean administrativamente.
 
 - **Admin:** crea, consulta y desactiva cuentas; administra trainers, clientes y
   asignaciones.
@@ -91,11 +91,11 @@ clientes desde su dashboard y quedan vinculados automáticamente.
 
 - Racha semanal de cumplimiento, mejor racha y semana actual.
 - Progreso hacia el siguiente nivel.
-- Medallas propias de CardonaFit y galería de logros obtenidos o pendientes.
+- Medallas propias de PRFit y galería de logros obtenidos o pendientes.
 
 ### Salud y aptitud preventiva
 
-- Evaluación preventiva propia de CardonaFit, separada del PAR-Q+ oficial.
+- Evaluación preventiva propia de PRFit, separada del PAR-Q+ oficial.
 - Datos generales, contacto de emergencia y médico opcional.
 - Filtro de señales cardiovasculares, metabólicas, articulares y de supervisión.
 - Enfermedades, cirugías, lesiones, medicamentos y alergias.

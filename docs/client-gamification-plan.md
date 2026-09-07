@@ -63,7 +63,7 @@ Antes del primer desbloqueo se utiliza el estado `En marcha`.
 ## Criterios visuales
 
 - Mantener Nunito, Geist Mono, superficies cálidas, texto slate y el naranja
-  contenido de CardonaFit.
+  contenido de PRFit.
 - Tratar las medallas como hitos deportivos sobrios, no como recompensas
   infantiles.
 - Usar el escudo hexagonal y la silueta atlética del ejemplo como referencia

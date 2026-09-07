@@ -32,7 +32,7 @@ No subas el archivo resultante a Git.
 
 ## Crear el snapshot del schema
 
-Desde `T:\CODE\JSProjects\cardonafit`, ejecuta:
+Desde el directorio raíz del repositorio, ejecuta:
 
 ```powershell
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"

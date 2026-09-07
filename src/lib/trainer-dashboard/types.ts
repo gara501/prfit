@@ -15,6 +15,7 @@ export type TrainerClientSummary = {
   latestWeight: number | null;
   latestFatPercentage: number | null;
   latestMeasurementDate: string;
+  activityStatus: "trained_today" | "inactive" | "pending";
 };
 
 export type ClientRoutineSummary = {
@@ -46,4 +47,5 @@ export type TrainerClientDetail = {
   routines: ClientRoutineSummary[];
   sessions: ClientSessionSummary[];
   measurements: ClientMeasurementSummary[];
+  context: { goals: string; restrictions: string; privateNotes: string };
 };

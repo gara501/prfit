@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ExerciseCreateForm } from "@/components/exercises/ExerciseCreateForm";
+import { ClientSelector } from "@/components/trainer-dashboard/ClientSelector";
 import { CreateClientForm } from "@/components/trainer-dashboard/CreateClientForm";
+import { saveClientPrivateContext } from "@/lib/trainer-dashboard/actions";
 import { getTrainerDashboard } from "@/lib/trainer-dashboard/queries";
 import type {
   ClientMeasurementSummary,
@@ -40,7 +41,7 @@ export default async function TrainerDashboardPage({
               Centro de entrenamiento
             </p>
             <h1 className="mt-3 text-4xl font-black tracking-[-0.045em] sm:text-5xl">
-              Tu cartera, en movimiento.
+              Tus entrenados.
             </h1>
             <p className="mt-3 max-w-2xl leading-7 text-slate-600">
               Selecciona un deportista para revisar su contexto, medir su
@@ -60,121 +61,46 @@ export default async function TrainerDashboardPage({
           </p>
         ) : null}
 
-        <div className="grid items-start gap-6 xl:grid-cols-[21rem_minmax(0,1fr)_21rem]">
-          <aside className="overflow-hidden rounded-3xl border border-slate-300 bg-white xl:sticky xl:top-28">
-            <div className="border-b border-slate-200 px-5 py-4">
-              <p className="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-orange-700">
-                Clientes asignados
-              </p>
-              <p className="mt-1 text-xs text-slate-500">
-                {clients.length} en tu cartera activa
-              </p>
-            </div>
-            {clients.length === 0 ? (
-              <p className="p-6 text-sm leading-6 text-slate-500">
-                Crea tu primer cliente desde el formulario lateral.
-              </p>
-            ) : (
-              <nav
-                aria-label="Clientes asignados"
-                className="max-h-[calc(100vh-15rem)] space-y-2 overflow-y-auto p-3"
-              >
-                {clients.map((client) => {
-                  const isSelected = selected?.client.id === client.id;
-                  return (
-                    <article
-                      className={`overflow-hidden rounded-2xl border transition ${
-                        isSelected
-                          ? "border-slate-950 bg-slate-950 text-white"
-                          : "border-slate-200 hover:border-orange-300 hover:bg-orange-50"
-                      }`}
-                      key={client.id}
-                    >
-                      <Link
-                        aria-current={isSelected ? "page" : undefined}
-                        className="flex items-center gap-3 px-4 pb-3 pt-4"
-                        href={`/trainer?client=${client.id}`}
-                      >
-                        <span
-                          className={`grid size-10 shrink-0 place-items-center rounded-xl text-sm font-black ${
-                            isSelected
-                              ? "bg-orange-500 text-slate-950"
-                              : "bg-slate-100 text-slate-700"
-                          }`}
-                        >
-                          {displayName(client).charAt(0).toUpperCase()}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-black">
-                            {displayName(client)}
-                          </span>
-                          <span
-                            className={`mt-0.5 block text-[11px] ${
-                              isSelected ? "text-slate-400" : "text-slate-500"
-                            }`}
-                          >
-                            {client.sessionCount} sesiones registradas
-                          </span>
-                        </span>
-                      </Link>
-                      <dl
-                        className={`mx-4 grid gap-1.5 border-t py-3 text-[11px] ${
-                          isSelected
-                            ? "border-slate-800 text-slate-400"
-                            : "border-slate-200 text-slate-500"
-                        }`}
-                      >
-                        <ClientContact label="Email" value={client.email} />
-                        <ClientContact label="Tel." value={client.phone} />
-                      </dl>
-                      <div
-                        className={`border-t px-4 py-3 ${
-                          isSelected ? "border-slate-800" : "border-slate-200"
-                        }`}
-                      >
-                        <p className="font-mono text-[9px] font-black uppercase tracking-wider opacity-50">
-                          Rutina activa
-                        </p>
-                        {client.activeRoutineId ? (
-                          <Link
-                            className={`mt-1 block truncate text-xs font-black hover:underline ${
-                              isSelected ? "text-orange-400" : "text-orange-700"
-                            }`}
-                            href={`/trainer/routines/${client.activeRoutineId}`}
-                          >
-                            {client.activeRoutineName} →
-                          </Link>
-                        ) : (
-                          <p className="mt-1 text-xs font-bold opacity-50">
-                            Sin rutina activa
-                          </p>
-                        )}
-                      </div>
-                    </article>
-                  );
-                })}
-              </nav>
-            )}
-          </aside>
-
-          {selected ? (
-            <ClientWorkspace selected={selected} />
-          ) : (
-            <section className="grid min-h-[32rem] place-items-center rounded-3xl border border-dashed border-slate-400 bg-white/60 p-10 text-center">
-              <div className="max-w-sm">
-                <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-orange-500 text-2xl font-black">
-                  +
-                </span>
-                <h2 className="mt-4 text-2xl font-black">
-                  Crea tu primer cliente
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Al crearlo quedará vinculado automáticamente y podrás diseñar
-                  su rutina desde esta misma ficha.
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
+          <div className="min-w-0 space-y-6">
+            <section className="border border-border bg-card p-4 sm:flex sm:items-end sm:justify-between sm:gap-5">
+              <div>
+                <p className="font-mono text-label font-black uppercase text-accent-foreground">
+                  Clientes asignados
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Consulta un deportista sin expandir la pantalla a medida que
+                  crece tu cartera.
                 </p>
               </div>
+              <ClientSelector
+                clients={clients.map((client) => ({
+                  id: client.id,
+                  label: `${activitySymbol(client.activityStatus)} ${displayName(client)} — ${activityText(client.activityStatus)}`,
+                }))}
+                selectedClientId={selected?.client.id ?? ""}
+              />
             </section>
-          )}
+
+            {selected ? (
+              <ClientWorkspace selected={selected} />
+            ) : (
+              <section className="grid min-h-[32rem] place-items-center rounded-3xl border border-dashed border-slate-400 bg-white/60 p-10 text-center">
+                <div className="max-w-sm">
+                  <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-orange-500 text-2xl font-black">
+                    +
+                  </span>
+                  <h2 className="mt-4 text-2xl font-black">
+                    Crea tu primer cliente
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-500">
+                    Al crearlo quedará vinculado automáticamente y podrás
+                    diseñar su rutina desde esta misma ficha.
+                  </p>
+                </div>
+              </section>
+            )}
+          </div>
 
           <div className="space-y-6 xl:sticky xl:top-28">
             <aside
@@ -192,11 +118,6 @@ export default async function TrainerDashboardPage({
               </p>
               <CreateClientForm />
             </aside>
-
-            <ExerciseCreateForm
-              description="Agrégalo al catálogo para usarlo en cualquier rutina."
-              eyebrow="Biblioteca de ejercicios"
-            />
           </div>
         </div>
       </div>
@@ -342,6 +263,59 @@ function ClientWorkspace({
         <SessionPanel sessions={sessions} />
         <MeasurementPanel measurements={measurements} clientId={client.id} />
       </div>
+      <section className="overflow-hidden rounded-3xl border border-slate-300 bg-white">
+        <SectionHeader
+          eyebrow="Contexto privado"
+          title="Objetivos y restricciones"
+        />
+        <form
+          action={saveClientPrivateContext}
+          className="grid gap-5 p-6 sm:p-7"
+        >
+          <input name="clientId" type="hidden" value={client.id} />
+          <label className="grid gap-2 text-sm font-black">
+            Objetivos
+            <textarea
+              className="min-h-24 rounded-xl border border-slate-300 bg-white p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-orange-500"
+              defaultValue={selected.context.goals}
+              maxLength={4000}
+              name="goals"
+              placeholder="Objetivos acordados y prioridades del bloque."
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-black">
+            Restricciones o lesiones
+            <textarea
+              className="min-h-24 rounded-xl border border-slate-300 bg-white p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-orange-500"
+              defaultValue={selected.context.restrictions}
+              maxLength={4000}
+              name="restrictions"
+              placeholder="Restricciones de carga, lesiones y adaptaciones necesarias."
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-black">
+            Notas privadas del entrenador
+            <textarea
+              className="min-h-32 rounded-xl border border-slate-300 bg-white p-3 text-sm font-normal outline-none focus:ring-2 focus:ring-orange-500"
+              defaultValue={selected.context.privateNotes}
+              maxLength={8000}
+              name="privateNotes"
+              placeholder="Observaciones internas; este contenido no es visible para el cliente."
+            />
+          </label>
+          <div className="flex items-center justify-between gap-4 border-t border-slate-200 pt-4">
+            <p className="text-xs text-slate-500">
+              Solo tú, como trainer asignado, puedes consultar este contexto.
+            </p>
+            <button
+              className="min-h-11 rounded-xl bg-slate-950 px-5 text-sm font-black text-white hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+              type="submit"
+            >
+              Guardar contexto
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   );
 }
@@ -474,15 +448,15 @@ function displayName(client: TrainerClientSummary) {
   return `${client.firstName} ${client.lastName}`.trim() || "Cliente";
 }
 
-function ClientContact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid grid-cols-[3rem_minmax(0,1fr)] gap-2">
-      <dt className="font-mono text-[9px] font-black uppercase tracking-wider opacity-60">
-        {label}
-      </dt>
-      <dd className="truncate font-bold">{value || "Sin registrar"}</dd>
-    </div>
-  );
+function activityText(status: TrainerClientSummary["activityStatus"]) {
+  return {
+    trained_today: "Entrenó hoy",
+    pending: "Sin entrenar hoy",
+    inactive: "7+ días sin actividad",
+  }[status];
+}
+function activitySymbol(status: TrainerClientSummary["activityStatus"]) {
+  return { trained_today: "✓", pending: "○", inactive: "!" }[status];
 }
 
 function getAge(birthDate: string) {

@@ -79,7 +79,7 @@ src/
 
 - Treat shadcn/ui as source-owned accessible primitives, not as a visual theme. Its configuration lives in `components.json`, primitives live in `src/components/ui`, and shared class composition uses `cn()` from `src/lib/utils.ts`.
 - Use an existing shadcn/ui primitive before creating a new primitive. Add only the individual component needed for the current feature; never run broad component generation or migration commands.
-- Preserve the CardonaFit visual language: Nunito, Geist Mono, warm neutral surfaces, slate text, restrained orange emphasis and semantic green/red states. Do not ship default shadcn styling unchanged.
+- Preserve the PRFit visual language: Nunito, Geist Mono, warm neutral surfaces, slate text, restrained orange emphasis and semantic green/red states. Do not ship default shadcn styling unchanged.
 - Use semantic tokens from `src/app/globals.css` for colors, typography, spacing, radii, borders, focus rings and elevation. Do not introduce hard-coded colors in application components; data visualizations are the exception when a token cannot express the series meaning.
 - Design mobile-first.
 - Optimize active workout flows for one-handed interaction.

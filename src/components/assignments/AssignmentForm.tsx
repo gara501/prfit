@@ -17,21 +17,14 @@ const getName = (firstName: string, lastName: string, fallback: string) =>
   `${firstName} ${lastName}`.trim() || fallback;
 
 export function AssignmentForm({
-  role,
-  currentUserId,
   assignments,
   trainers,
 }: {
-  role: "admin" | "trainer";
-  currentUserId: string;
   assignments: ClientAssignment[];
   trainers: TrainerOption[];
 }) {
   const [state, formAction] = useActionState(assignClient, initialState);
-  const selectableClients =
-    role === "admin"
-      ? assignments
-      : assignments.filter((assignment) => !assignment.assignmentId);
+  const selectableClients = assignments;
   const canAssign = selectableClients.length > 0 && trainers.length > 0;
 
   return (
@@ -64,36 +57,32 @@ export function AssignmentForm({
         </select>
       </label>
 
-      {role === "admin" ? (
-        <label className="block text-sm font-bold" htmlFor="trainerId">
-          Entrenador
-          <select
-            id="trainerId"
-            name="trainerId"
-            required
-            disabled={!canAssign}
-            defaultValue=""
-            className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-3 text-sm text-white outline-none transition disabled:cursor-not-allowed disabled:opacity-50 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20"
-          >
-            <option value="" disabled>
-              {trainers.length > 0
-                ? "Selecciona un entrenador"
-                : "No hay entrenadores activos"}
+      <label className="block text-sm font-bold" htmlFor="trainerId">
+        Entrenador
+        <select
+          id="trainerId"
+          name="trainerId"
+          required
+          disabled={!canAssign}
+          defaultValue=""
+          className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 px-3.5 py-3 text-sm text-white outline-none transition disabled:cursor-not-allowed disabled:opacity-50 focus:border-orange-400 focus:ring-2 focus:ring-orange-400/20"
+        >
+          <option value="" disabled>
+            {trainers.length > 0
+              ? "Selecciona un entrenador"
+              : "No hay entrenadores activos"}
+          </option>
+          {trainers.map((trainer) => (
+            <option key={trainer.id} value={trainer.id}>
+              {getName(
+                trainer.firstName,
+                trainer.lastName,
+                "Entrenador sin nombre",
+              )}
             </option>
-            {trainers.map((trainer) => (
-              <option key={trainer.id} value={trainer.id}>
-                {getName(
-                  trainer.firstName,
-                  trainer.lastName,
-                  "Entrenador sin nombre",
-                )}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : (
-        <input type="hidden" name="trainerId" value={currentUserId} />
-      )}
+          ))}
+        </select>
+      </label>
 
       {state.status !== "idle" ? (
         <output

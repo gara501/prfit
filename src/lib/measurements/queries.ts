@@ -54,6 +54,12 @@ export async function getClientDashboardData(): Promise<{
   measurements: BodyMeasurement[];
   activeRoutines: number;
   sessionCount: number;
+  nextScheduledWorkout: {
+    id: string;
+    date: string;
+    dayNumber: number;
+    routineName: string;
+  } | null;
   error: string | null;
 }> {
   const account = await requireRole("client");
@@ -74,15 +80,37 @@ export async function getClientDashboardData(): Promise<{
     .from("workout_sessions")
     .select("id", { count: "exact", head: true })
     .eq("client_id", account.user.id);
-  const [measurementsResult, routinesResult, sessionsResult] =
-    await Promise.all([measurementsPromise, routinesPromise, sessionsPromise]);
+  const nextScheduledWorkoutPromise = supabase
+    .from("scheduled_workouts")
+    .select("id, scheduled_date, day_number, routine:routines(name)")
+    .eq("client_id", account.user.id)
+    .in("status", ["scheduled", "rescheduled"])
+    .gte("scheduled_date", new Date().toISOString().slice(0, 10))
+    .order("scheduled_date")
+    .limit(1)
+    .maybeSingle();
+  const [
+    measurementsResult,
+    routinesResult,
+    sessionsResult,
+    nextScheduledWorkoutResult,
+  ] = await Promise.all([
+    measurementsPromise,
+    routinesPromise,
+    sessionsPromise,
+    nextScheduledWorkoutPromise,
+  ]);
   const error =
-    measurementsResult.error ?? routinesResult.error ?? sessionsResult.error;
+    measurementsResult.error ??
+    routinesResult.error ??
+    sessionsResult.error ??
+    nextScheduledWorkoutResult.error;
   if (error) {
     return {
       measurements: [],
       activeRoutines: 0,
       sessionCount: 0,
+      nextScheduledWorkout: null,
       error: error.message,
     };
   }
@@ -91,6 +119,19 @@ export async function getClientDashboardData(): Promise<{
     measurements: (measurementsResult.data ?? []).map(mapMeasurement),
     activeRoutines: routinesResult.count ?? 0,
     sessionCount: sessionsResult.count ?? 0,
+    nextScheduledWorkout: nextScheduledWorkoutResult.data
+      ? {
+          id: nextScheduledWorkoutResult.data.id,
+          date: nextScheduledWorkoutResult.data.scheduled_date,
+          dayNumber: nextScheduledWorkoutResult.data.day_number,
+          routineName:
+            (
+              nextScheduledWorkoutResult.data.routine as unknown as {
+                name: string;
+              } | null
+            )?.name ?? "Rutina",
+        }
+      : null,
     error: null,
   };
 }

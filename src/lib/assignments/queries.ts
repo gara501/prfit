@@ -99,9 +99,7 @@ export async function getAssignmentManagementData(): Promise<AssignmentManagemen
   const assignments = ((assignmentsResult.data ?? []) as RawClientAssignment[])
     .filter(
       (assignment) =>
-        account.role === "admin" ||
-        assignment.trainer_id === null ||
-        assignment.trainer_id === account.user.id,
+        account.role === "admin" || assignment.trainer_id === account.user.id,
     )
     .map((assignment) => {
       const canSeeClientDetails =

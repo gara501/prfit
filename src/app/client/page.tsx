@@ -1,6 +1,8 @@
+import { CalendarClock, Play } from "lucide-react";
 import Link from "next/link";
 import { StreakSummary } from "@/components/gamification/StreakSummary";
 import { ProgressChart } from "@/components/measurements/ProgressChart";
+import { startScheduledWorkout } from "@/lib/calendar/actions";
 import { getClientGamification } from "@/lib/gamification/queries";
 import { getClientDashboardData } from "@/lib/measurements/queries";
 
@@ -15,7 +17,13 @@ export default async function ClientDashboardPage() {
     getClientDashboardData(),
     getClientGamification(),
   ]);
-  const { measurements, activeRoutines, sessionCount, error } = dashboard;
+  const {
+    measurements,
+    activeRoutines,
+    sessionCount,
+    nextScheduledWorkout,
+    error,
+  } = dashboard;
   const latest = measurements.at(-1);
   const weightPoints = measurements.flatMap((measurement) =>
     measurement.weight === null
@@ -61,6 +69,44 @@ export default async function ClientDashboardPage() {
           </p>
         ) : null}
 
+        {nextScheduledWorkout ? (
+          <section className="mt-6 border-l-4 border-primary bg-card p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+            <div className="flex items-start gap-3">
+              <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground">
+                <CalendarClock aria-hidden="true" className="size-5" />
+              </span>
+              <div>
+                <p className="font-mono text-[10px] font-black uppercase tracking-[0.16em] text-accent-foreground">
+                  Próxima sesión programada
+                </p>
+                <h2 className="mt-1 text-lg font-black">
+                  {nextScheduledWorkout.routineName} · Día{" "}
+                  {nextScheduledWorkout.dayNumber}
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {dateFormatter.format(
+                    new Date(`${nextScheduledWorkout.date}T12:00:00`),
+                  )}
+                </p>
+              </div>
+            </div>
+            <form action={startScheduledWorkout} className="mt-4 sm:mt-0">
+              <input
+                name="scheduledWorkoutId"
+                type="hidden"
+                value={nextScheduledWorkout.id}
+              />
+              <button
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-black text-primary-foreground transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto"
+                type="submit"
+              >
+                <Play aria-hidden="true" className="size-4" />
+                Empezar sesión
+              </button>
+            </form>
+          </section>
+        ) : null}
+
         <section className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Metric label="Rutinas activas" value={activeRoutines} />
           <Metric label="Sesiones" value={sessionCount} />
@@ -98,6 +144,12 @@ export default async function ClientDashboardPage() {
             href="/client/calendar"
           >
             Calendario y adherencia →
+          </Link>
+          <Link
+            className="rounded-2xl border border-slate-300 bg-white px-5 py-4 text-sm font-black hover:border-orange-400"
+            href="/client/health"
+          >
+            Evaluación de salud →
           </Link>
           <Link
             className="rounded-2xl border border-slate-300 bg-white px-5 py-4 text-sm font-black hover:border-orange-400"
