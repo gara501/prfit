@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import Script from "next/script";
+import { PwaClientSetup } from "@/components/pwa/PwaClientSetup";
 import "./globals.css";
 
 const themeScript = `(()=>{try{const key="prtracker-theme";const stored=localStorage.getItem(key);const isDark=stored==="dark"||(stored===null&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",isDark);document.documentElement.style.colorScheme=isDark?"dark":"light"}catch{}})()`;
@@ -30,15 +31,20 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "PRTracker",
-    template: "%s | PRTracker",
+    default: "PRFit",
+    template: "%s | PRFit",
   },
+  applicationName: "PRFit",
   description: "Gestión de rutinas, clientes y sesiones de entrenamiento.",
   icons: {
-    icon: "/logo.svg",
+    icon: [
+      { type: "image/png", url: "/pwa-icon?size=192" },
+      { type: "image/png", url: "/pwa-icon?size=512" },
+    ],
     shortcut: "/logo.svg",
-    apple: "/logo.svg",
+    apple: [{ sizes: "180x180", type: "image/png", url: "/pwa-icon?size=180" }],
   },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "PRFit" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -53,7 +59,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {themeScript}
         </Script>
       </head>
-      <body className="flex min-h-full flex-col font-sans">{children}</body>
+      <body className="flex min-h-full flex-col font-sans">
+        <PwaClientSetup />
+        {children}
+      </body>
     </html>
   );
 }

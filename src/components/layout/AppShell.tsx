@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { PwaInstallControl } from "@/components/pwa/PwaInstallControl";
+import { PwaLogoutButton } from "@/components/pwa/PwaLogoutButton";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
-import { logout } from "@/lib/auth/actions";
 import type { AppRole } from "@/lib/auth/roles";
 import { MessageNotificationBell } from "./MessageNotificationBell";
 import { RoleNavigation } from "./RoleNavigation";
@@ -49,7 +50,7 @@ export function AppShell({
             />
             <span>
               <span className="block text-base font-black tracking-[-0.03em]">
-                PRTracker
+                PRFit
               </span>
               <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">
                 Training system
@@ -77,31 +78,11 @@ export function AppShell({
 
             <ThemeToggle />
 
+            <PwaInstallControl />
+
             <MessageNotificationBell userId={userId} userRole={userRole} />
 
-            <form action={logout}>
-              <button
-                type="submit"
-                aria-label="Cerrar sesión"
-                title="Cerrar sesión"
-                className="grid size-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  className="size-4"
-                  fill="none"
-                >
-                  <path
-                    d="M10 5H5v14h5M14 8l4 4-4 4M8 12h10"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-            </form>
+            <PwaLogoutButton />
           </div>
         </div>
       </header>

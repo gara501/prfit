@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ExerciseVideoButton } from "@/components/exercises/ExerciseVideoButton";
+import { WorkoutConnectionStatus } from "@/components/pwa/WorkoutConnectionStatus";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { getTrainingMethod } from "@/lib/routines/training-methods";
@@ -426,6 +427,7 @@ export function LiveWorkoutRunner({
               style={{ width: `${progress}%` }}
             />
           </div>
+          <WorkoutConnectionStatus />
         </div>
       </header>
 

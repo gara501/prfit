@@ -33,7 +33,11 @@ export const createClient = async (request: NextRequest) => {
 
   const isPublicRoute =
     request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/auth/");
+    request.nextUrl.pathname.startsWith("/auth/") ||
+    request.nextUrl.pathname === "/manifest.webmanifest" ||
+    request.nextUrl.pathname === "/pwa-icon" ||
+    request.nextUrl.pathname === "/offline" ||
+    request.nextUrl.pathname === "/sw.js";
 
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone();
