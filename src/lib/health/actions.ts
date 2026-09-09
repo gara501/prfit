@@ -11,6 +11,7 @@ import type {
   HealthScreeningPayload,
   YesNo,
 } from "@/lib/health/types";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 export type HealthActionState = {
@@ -157,32 +158,21 @@ export async function submitHealthScreening(
   const hasCriticalRisk = Object.values(payload.riskAnswers).includes("yes");
   const encrypted = encryptHealthValue(payload);
   const supabase = createClient(await cookies());
-  const { data: latest } = await supabase
-    .from("health_screenings")
-    .select("version")
-    .eq("client_id", account.user.id)
-    .order("version", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const expiresAt = new Date(signedAt);
-  expiresAt.setUTCFullYear(expiresAt.getUTCFullYear() + 1);
-  const { data: screening, error } = await supabase
-    .from("health_screenings")
-    .insert({
-      client_id: account.user.id,
-      version: (latest?.version ?? 0) + 1,
-      has_critical_risk: hasCriticalRisk,
-      payload_ciphertext: encrypted.ciphertext,
-      encryption_iv: encrypted.iv,
-      encryption_tag: encrypted.tag,
-      content_hash: hashHealthContent(payload),
-      consent_version: "health-consent-co-2026-01",
-      privacy_notice_version: "privacy-health-co-2026-01",
-      submitted_at: signedAt,
-      expires_at: expiresAt.toISOString(),
-    })
-    .select("id")
-    .single();
+  const { data: screeningId, error } = await createAdminClient().rpc(
+    "submit_encrypted_health_screening",
+    {
+      p_client_id: account.user.id,
+      p_has_critical_risk: hasCriticalRisk,
+      p_encrypted: {
+        ciphertext: encrypted.ciphertext,
+        iv: encrypted.iv,
+        tag: encrypted.tag,
+        keyVersion: encrypted.keyVersion ?? 1,
+      },
+      p_content_hash: hashHealthContent(payload),
+    },
+  );
+  const screening = screeningId ? { id: screeningId } : null;
   if (error || !screening) {
     return {
       status: "error",
@@ -235,7 +225,7 @@ async function uploadHealthDocument(
     .from("medical-documents")
     .upload(storagePath, file, { contentType: file.type, upsert: false });
   if (uploadError) return uploadError.message;
-  const { error: metadataError } = await supabase
+  const { error: metadataError } = await createAdminClient()
     .from("health_documents")
     .insert({
       screening_id: screeningId,
@@ -248,7 +238,9 @@ async function uploadHealthDocument(
       size_bytes: file.size,
     });
   if (metadataError) {
-    await supabase.storage.from("medical-documents").remove([storagePath]);
+    await createAdminClient()
+      .storage.from("medical-documents")
+      .remove([storagePath]);
     return metadataError.message;
   }
   return null;
@@ -272,16 +264,23 @@ export async function reviewHealthScreening(formData: FormData) {
     redirect("/trainer/medical?error=Revisión inválida");
   }
   const encrypted = notes ? encryptHealthValue(notes) : null;
-  const supabase = createClient(await cookies());
-  const { error } = await supabase.from("health_screening_reviews").insert({
-    screening_id: screeningId,
-    trainer_id: account.user.id,
-    decision,
-    notes_ciphertext: encrypted?.ciphertext ?? null,
-    encryption_iv: encrypted?.iv ?? null,
-    encryption_tag: encrypted?.tag ?? null,
-    encryption_key_version: encrypted ? 1 : null,
-  });
+  const { error } = await createAdminClient().rpc(
+    "record_encrypted_health_review",
+    {
+      p_trainer_id: account.user.id,
+      p_client_id: clientId,
+      p_screening_id: screeningId,
+      p_decision: decision,
+      p_encrypted: encrypted
+        ? {
+            ciphertext: encrypted.ciphertext,
+            iv: encrypted.iv,
+            tag: encrypted.tag,
+            keyVersion: encrypted.keyVersion ?? 1,
+          }
+        : null,
+    },
+  );
   if (error)
     redirect(
       `/trainer/medical/${clientId}?error=${encodeURIComponent(error.message)}`,

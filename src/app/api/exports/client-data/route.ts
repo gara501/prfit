@@ -1,5 +1,5 @@
 import { Readable } from "node:stream";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import {
   downloadHeaders,
   getExportAccount,
@@ -10,6 +10,7 @@ import {
   createClientArchiveStream,
   prepareClientArchive,
 } from "@/lib/reports/client-archive";
+import { acquireExportCapacity } from "@/lib/reports/export-capacity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,20 +35,36 @@ export async function GET(request: Request) {
     );
   }
 
+  const release = acquireExportCapacity(account.id);
+  if (!release)
+    return NextResponse.json(
+      { error: "Ya hay una exportación en curso. Intenta más tarde." },
+      { status: 429, headers: { "Retry-After": "10" } },
+    );
   try {
     const prepared = await prepareClientArchive(clientId);
-    if (!prepared)
+    if (!prepared) {
+      release();
       return NextResponse.json(
         { error: "Cliente no encontrado." },
         { status: 404 },
       );
-    await recordExportAudit(account, {
-      clientId,
-      exportType: "client_archive",
-      result: "completed",
-      approximateSizeBytes: prepared.approximateSizeBytes,
-    });
+    }
     const stream = createClientArchiveStream(prepared.entries);
+    stream.once("close", release);
+    const finished = new Promise<"completed" | "failed">((resolve) => {
+      stream.once("end", () => resolve("completed"));
+      stream.once("error", () => resolve("failed"));
+      stream.once("close", () => resolve("failed"));
+    });
+    after(async () => {
+      await recordExportAudit(account, {
+        clientId,
+        exportType: "client_archive",
+        result: await finished,
+        approximateSizeBytes: prepared.approximateSizeBytes,
+      });
+    });
     const filename =
       sanitizeFilename(`datos-cardonafit-${prepared.displayName}`) ||
       "datos-cardonafit";
@@ -55,6 +72,7 @@ export async function GET(request: Request) {
       headers: downloadHeaders(`${filename}.zip`, "application/zip"),
     });
   } catch (error) {
+    release();
     await recordExportAudit(account, {
       clientId,
       exportType: "client_archive",
@@ -66,7 +84,11 @@ export async function GET(request: Request) {
         ? error.message
         : "No fue posible generar la exportación.";
     return NextResponse.json(
-      { error: message },
+      {
+        error: message.includes("100 MB")
+          ? "La exportación supera el límite de 100 MB."
+          : "No fue posible generar una exportación completa.",
+      },
       { status: message.includes("100 MB") ? 413 : 500 },
     );
   }

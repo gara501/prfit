@@ -30,6 +30,14 @@ export default async function ClientHealthPage({
           </p>
         </header>
 
+        {current?.error ? (
+          <p
+            role="alert"
+            className="mt-5 border border-destructive bg-card p-4 text-destructive"
+          >
+            {current.error}
+          </p>
+        ) : null}
         {query.submitted === "1" ? (
           <output className="mt-5 rounded-xl border border-success/30 bg-success/10 p-4 text-sm font-bold text-success">
             La evaluación quedó firmada y protegida correctamente.

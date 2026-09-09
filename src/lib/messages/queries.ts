@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { ChatMessage, ConversationContact } from "./types";
 
-export async function getConversationData(): Promise<{
+export async function getConversationData(
+  requestedContactId?: string,
+): Promise<{
   currentUserId: string;
   contacts: ConversationContact[];
   selectedContactId: string | null;
@@ -33,7 +35,10 @@ export async function getConversationData(): Promise<{
   if (contactResult.error)
     return emptyConversation(account.user.id, contactResult.error.message);
   const contacts = toContacts(account.role, contactResult.data);
-  const selectedContactId = contacts[0]?.id ?? null;
+  const selectedContactId =
+    contacts.find((contact) => contact.id === requestedContactId)?.id ??
+    contacts[0]?.id ??
+    null;
   if (!selectedContactId)
     return {
       currentUserId: account.user.id,
@@ -51,7 +56,9 @@ export async function getConversationData(): Promise<{
     .from("trainer_client_messages")
     .select("id, body, sender_id, sent_at, read_at")
     .match(filters)
-    .order("sent_at");
+    .order("sent_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(100);
   if (error)
     return emptyConversation(
       account.user.id,
@@ -63,7 +70,7 @@ export async function getConversationData(): Promise<{
     currentUserId: account.user.id,
     contacts,
     selectedContactId,
-    messages: (data ?? []).map((message) => ({
+    messages: (data ?? []).toReversed().map((message) => ({
       id: message.id,
       body: message.body,
       senderId: message.sender_id,

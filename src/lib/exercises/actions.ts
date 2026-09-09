@@ -30,7 +30,7 @@ export async function saveExercise(
   _state: ExerciseActionState,
   formData: FormData,
 ): Promise<ExerciseActionState> {
-  const account = await requireRole("trainer");
+  await requireRole("trainer");
   const exerciseId = text(formData, "exerciseId");
   const name = text(formData, "name");
   const imageUrl = text(formData, "imageUrl");
@@ -60,60 +60,19 @@ export async function saveExercise(
   }
 
   const supabase = createClient(await cookies());
-  const values = {
-    name,
-    image_url: imageUrl || null,
-    video_url: videoUrl,
-  };
-  const exerciseResult = exerciseId
-    ? await supabase
-        .from("exercises")
-        .update(values)
-        .eq("id", exerciseId)
-        .select("id")
-        .maybeSingle()
-    : await supabase
-        .from("exercises")
-        .insert({ ...values, created_by: account.user.id })
-        .select("id")
-        .single();
-
-  if (exerciseResult.error || !exerciseResult.data) {
+  const { error } = await supabase.rpc("save_exercise_catalog", {
+    p_exercise_id: exerciseId || null,
+    p_name: name,
+    p_image_url: imageUrl || null,
+    p_video_url: videoUrl,
+    p_body_zone_ids: [...new Set(bodyZoneIds)],
+    p_equipment_ids: [...new Set(equipmentIds)],
+  });
+  if (error)
     return {
       status: "error",
-      message:
-        exerciseResult.error?.message ?? "No fue posible guardar el ejercicio.",
+      message: "No fue posible guardar el ejercicio. No se aplicaron cambios.",
     };
-  }
-
-  const savedId = exerciseResult.data.id;
-  const [bodyZoneDelete, equipmentDelete] = await Promise.all([
-    supabase.from("exercise_body_zones").delete().eq("exercise_id", savedId),
-    supabase.from("exercise_equipment").delete().eq("exercise_id", savedId),
-  ]);
-  const deleteError = bodyZoneDelete.error ?? equipmentDelete.error;
-  if (deleteError) return { status: "error", message: deleteError.message };
-
-  const [bodyZoneInsert, equipmentInsert] = await Promise.all([
-    bodyZoneIds.length
-      ? supabase.from("exercise_body_zones").insert(
-          bodyZoneIds.map((bodyZoneId) => ({
-            exercise_id: savedId,
-            body_zone_id: bodyZoneId,
-          })),
-        )
-      : Promise.resolve({ error: null }),
-    equipmentIds.length
-      ? supabase.from("exercise_equipment").insert(
-          equipmentIds.map((equipmentId) => ({
-            exercise_id: savedId,
-            equipment_id: equipmentId,
-          })),
-        )
-      : Promise.resolve({ error: null }),
-  ]);
-  const relationError = bodyZoneInsert.error ?? equipmentInsert.error;
-  if (relationError) return { status: "error", message: relationError.message };
 
   revalidateExerciseViews();
   redirect(

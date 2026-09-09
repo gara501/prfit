@@ -25,6 +25,7 @@ import type {
   PreviousSetPerformance,
 } from "@/lib/sessions/types";
 import { createClient } from "@/lib/supabase/client";
+import { createSaveQueue } from "@/lib/training/save-queue";
 import {
   canCompleteSession,
   isSessionEditable,
@@ -82,6 +83,8 @@ export function LiveWorkoutRunner({
   const [restAnnouncement, setRestAnnouncement] = useState("");
   const [isCompletionOpen, setIsCompletionOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [enqueueSave] = useState(createSaveQueue);
+  const fieldVersions = useRef(new Map<string, number>());
   const pendingSaveCounts = useRef(new Map<string, number>());
   const persistedValues = useRef(
     new Map(
@@ -146,6 +149,10 @@ export function LiveWorkoutRunner({
     setId: string,
     patch: Partial<Pick<LiveWorkoutSet, EditableField>>,
   ) => {
+    for (const field of Object.keys(patch)) {
+      const key = `${setId}:${field}`;
+      fieldVersions.current.set(key, (fieldVersions.current.get(key) ?? 0) + 1);
+    }
     setExercises((current) =>
       current.map((exercise) => ({
         ...exercise,
@@ -161,8 +168,12 @@ export function LiveWorkoutRunner({
     patch: Partial<Pick<LiveWorkoutSet, EditableField>>,
   ) => {
     if (isReadOnly) return;
-    const previous = persistedValues.current.get(setId);
-    if (!previous) return;
+    const versions = new Map(
+      Object.keys(patch).map((field) => [
+        field,
+        fieldVersions.current.get(`${setId}:${field}`),
+      ]),
+    );
 
     pendingSaveCounts.current.set(
       setId,
@@ -195,36 +206,52 @@ export function LiveWorkoutRunner({
       databasePatch.deviation_reason = patch.deviationReason || null;
     }
 
-    const { error: updateError } = await supabase
-      .from("workout_session_sets")
-      .update(databasePatch)
-      .eq("id", setId)
-      .eq("workout_session_id", initialSession.id)
-      .select("id")
-      .single();
+    await enqueueSave(setId, async () => {
+      const previous = persistedValues.current.get(setId);
+      if (!previous) return;
+      const { error: updateError } = await supabase
+        .from("workout_session_sets")
+        .update(databasePatch)
+        .eq("id", setId)
+        .eq("workout_session_id", initialSession.id)
+        .select("id")
+        .single()
+        .then(
+          (result) => result,
+          () => ({ error: new Error("offline") }),
+        );
 
-    if (updateError) {
-      const rollback = Object.fromEntries(
-        Object.keys(patch).map((field) => [
-          field,
-          previous[field as EditableField],
-        ]),
-      ) as Partial<Pick<LiveWorkoutSet, EditableField>>;
-      updateLocalSet(setId, rollback);
-      if (patch.completed === true) {
-        setActiveSetId(setId);
-        setRestTimer((current) => (current?.setId === setId ? null : current));
+      if (updateError) {
+        const rollback = Object.fromEntries(
+          Object.keys(patch)
+            .filter(
+              (field) =>
+                versions.get(field) ===
+                fieldVersions.current.get(`${setId}:${field}`),
+            )
+            .map((field) => [field, previous[field as EditableField]]),
+        ) as Partial<Pick<LiveWorkoutSet, EditableField>>;
+        const restoreCompletion =
+          patch.completed === true &&
+          versions.get("completed") ===
+            fieldVersions.current.get(`${setId}:completed`);
+        updateLocalSet(setId, rollback);
+        if (restoreCompletion) {
+          setActiveSetId(setId);
+          setRestTimer((current) =>
+            current?.setId === setId ? null : current,
+          );
+        }
+        setError(
+          "No pudimos guardar el último cambio. Restauramos el valor anterior.",
+        );
+      } else {
+        persistedValues.current.set(setId, {
+          ...(persistedValues.current.get(setId) ?? previous),
+          ...patch,
+        });
       }
-      setError(
-        "No pudimos guardar el último cambio. Restauramos el valor anterior.",
-      );
-    } else {
-      persistedValues.current.set(setId, {
-        ...(persistedValues.current.get(setId) ?? previous),
-        ...patch,
-      });
-    }
-
+    });
     const remainingSaves = (pendingSaveCounts.current.get(setId) ?? 1) - 1;
     if (remainingSaves > 0) {
       pendingSaveCounts.current.set(setId, remainingSaves);

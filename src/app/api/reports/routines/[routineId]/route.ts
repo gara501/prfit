@@ -21,14 +21,16 @@ export async function GET(
   if (!isUuid(routineId)) {
     return NextResponse.json({ error: "Rutina inválida." }, { status: 400 });
   }
-  const data = await getRoutineReportData(account, routineId);
-  if (!data)
-    return NextResponse.json(
-      { error: "Rutina no encontrada." },
-      { status: 404 },
-    );
-
+  let reportClientId: string | null = null;
   try {
+    const data = await getRoutineReportData(account, routineId);
+    if (!data)
+      return NextResponse.json(
+        { error: "Rutina no encontrada." },
+        { status: 404 },
+      );
+
+    reportClientId = data.clientId;
     const { renderRoutinePdf } = await import("@/lib/reports/documents");
     const pdf = await renderRoutinePdf(data);
     await recordExportAudit(account, {
@@ -44,12 +46,13 @@ export async function GET(
       headers: downloadHeaders(`${base}.pdf`, "application/pdf"),
     });
   } catch (error) {
-    await recordExportAudit(account, {
-      clientId: data.clientId,
-      exportType: "routine_pdf",
-      routineId: data.id,
-      result: "failed",
-    });
+    if (reportClientId)
+      await recordExportAudit(account, {
+        clientId: reportClientId,
+        exportType: "routine_pdf",
+        routineId,
+        result: "failed",
+      });
     console.error("No se pudo generar el PDF de rutina", error);
     return NextResponse.json(
       { error: "No fue posible generar el PDF." },

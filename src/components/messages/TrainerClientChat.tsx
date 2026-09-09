@@ -19,22 +19,31 @@ export function TrainerClientChat({
   initialMessages: ChatMessage[];
 }) {
   const [draft, setDraft] = useState("");
-  const { messages, isSending, error, send, markIncomingAsRead } =
-    useTrainerClientMessages({
-      currentUserId,
-      trainerId,
-      clientId,
-      initialMessages,
-    });
+  const {
+    messages,
+    isSending,
+    error,
+    send,
+    markIncomingAsRead,
+    hasOlder,
+    loadingOlder,
+    loadOlder,
+  } = useTrainerClientMessages({
+    currentUserId,
+    trainerId,
+    clientId,
+    initialMessages,
+  });
   const listEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     void markIncomingAsRead();
   }, [markIncomingAsRead]);
+  const lastMessageId = messages.at(-1)?.id;
   useEffect(() => {
-    if (messages.length > 0) {
+    if (lastMessageId) {
       listEndRef.current?.scrollIntoView?.({ block: "end" });
     }
-  }, [messages]);
+  }, [lastMessageId]);
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (await send(draft)) setDraft("");
@@ -59,6 +68,16 @@ export function TrainerClientChat({
         aria-live="polite"
         className="flex flex-1 flex-col gap-3 overflow-y-auto bg-surface-subtle px-4 py-5 sm:px-6"
       >
+        {hasOlder ? (
+          <button
+            type="button"
+            disabled={loadingOlder}
+            onClick={() => void loadOlder()}
+            className="min-h-11 rounded-lg border border-border bg-card px-4 text-sm font-bold hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          >
+            {loadingOlder ? "Cargando…" : "Cargar mensajes anteriores"}
+          </button>
+        ) : null}
         {messages.length ? (
           messages.map((message) => (
             <MessageBubble

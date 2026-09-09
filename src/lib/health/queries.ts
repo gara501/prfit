@@ -8,6 +8,7 @@ import type {
   HealthScreeningPayload,
   HealthScreeningSummary,
 } from "@/lib/health/types";
+import { readAll } from "@/lib/supabase/read-all";
 import { createClient } from "@/lib/supabase/server";
 
 type ScreeningRow = {
@@ -17,6 +18,7 @@ type ScreeningRow = {
   payload_ciphertext: string;
   encryption_iv: string;
   encryption_tag: string;
+  encryption_key_version: number;
   submitted_at: string;
   expires_at: string;
 };
@@ -26,6 +28,7 @@ type ReviewRow = {
   notes_ciphertext: string | null;
   encryption_iv: string | null;
   encryption_tag: string | null;
+  encryption_key_version: number | null;
   reviewed_at: string;
 };
 
@@ -35,7 +38,7 @@ export async function getOwnHealthScreening() {
   const { data } = await supabase
     .from("health_screenings")
     .select(
-      "id,version,has_critical_risk,payload_ciphertext,encryption_iv,encryption_tag,submitted_at,expires_at",
+      "id,version,has_critical_risk,payload_ciphertext,encryption_iv,encryption_tag,encryption_key_version,submitted_at,expires_at",
     )
     .eq("client_id", account.user.id)
     .order("submitted_at", { ascending: false })
@@ -50,43 +53,39 @@ export async function getOwnHealthScreening() {
 }
 
 export async function getTrainerHealthClients() {
-  const account = await requireRole("trainer");
+  await requireRole("trainer");
   const supabase = createClient(await cookies());
-  const { data: links, error } = await supabase
-    .from("trainer_clients")
-    .select(
-      "client_id,profiles!trainer_clients_client_id_fkey(first_name,last_name)",
-    )
-    .eq("trainer_id", account.user.id)
-    .eq("is_active", true);
-  if (error) return { clients: [], error: error.message };
-  const clients = await Promise.all(
-    (links ?? []).map(async (link) => {
-      const { data } = await supabase
-        .from("health_screenings")
-        .select(
-          "id,version,has_critical_risk,payload_ciphertext,encryption_iv,encryption_tag,submitted_at,expires_at",
-        )
-        .eq("client_id", link.client_id)
-        .order("submitted_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const profile = link.profiles as unknown as {
-        first_name: string | null;
-        last_name: string | null;
-      } | null;
-      return {
-        id: link.client_id,
+  try {
+    const { data } = await readAll(
+      supabase.rpc("list_trainer_health_summaries"),
+    );
+    return {
+      clients: data.map((row) => ({
+        id: row.client_id,
         name:
-          `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() ||
-          "Cliente",
-        screening: data
-          ? await hydrateScreening(supabase, data as ScreeningRow)
+          `${row.first_name ?? ""} ${row.last_name ?? ""}`.trim() || "Cliente",
+        screening: row.screening_id
+          ? {
+              summary: {
+                id: row.screening_id,
+                version: row.version ?? 1,
+                hasCriticalRisk: row.has_critical_risk ?? true,
+                submittedAt: row.submitted_at ?? "",
+                expiresAt: row.expires_at ?? "",
+                decision: row.decision as HealthDecision | null,
+                reviewNotes: "",
+              },
+            }
           : null,
-      };
-    }),
-  );
-  return { clients, error: "" };
+      })),
+      error: "",
+    };
+  } catch {
+    return {
+      clients: [],
+      error: "No fue posible cargar los estados de salud.",
+    };
+  }
 }
 
 export async function getTrainerClientHealth(clientId: string) {
@@ -109,7 +108,7 @@ export async function getTrainerClientHealth(clientId: string) {
   const { data } = await supabase
     .from("health_screenings")
     .select(
-      "id,version,has_critical_risk,payload_ciphertext,encryption_iv,encryption_tag,submitted_at,expires_at",
+      "id,version,has_critical_risk,payload_ciphertext,encryption_iv,encryption_tag,encryption_key_version,submitted_at,expires_at",
     )
     .eq("client_id", clientId)
     .order("submitted_at", { ascending: false })
@@ -145,24 +144,26 @@ export async function getTrainerClientHealth(clientId: string) {
   };
 }
 
-async function hydrateScreening(
+async function decryptScreening(
   supabase: ReturnType<typeof createClient>,
   row: ScreeningRow,
 ) {
-  const { data: reviewData } = await supabase
+  const { data: reviewData, error: reviewError } = await supabase
     .from("health_screening_reviews")
     .select(
-      "decision,notes_ciphertext,encryption_iv,encryption_tag,reviewed_at",
+      "decision,notes_ciphertext,encryption_iv,encryption_tag,encryption_key_version,reviewed_at",
     )
     .eq("screening_id", row.id)
     .order("reviewed_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (reviewError) throw new Error("No fue posible leer la revisión.");
   const review = reviewData as ReviewRow | null;
   const payload = decryptHealthValue<HealthScreeningPayload>({
     ciphertext: row.payload_ciphertext,
     iv: row.encryption_iv,
     tag: row.encryption_tag,
+    keyVersion: row.encryption_key_version,
   });
   const reviewNotes =
     review?.notes_ciphertext && review.encryption_iv && review.encryption_tag
@@ -170,6 +171,7 @@ async function hydrateScreening(
           ciphertext: review.notes_ciphertext,
           iv: review.encryption_iv,
           tag: review.encryption_tag,
+          keyVersion: review.encryption_key_version ?? 1,
         })
       : "";
   const summary: HealthScreeningSummary = {
@@ -182,4 +184,28 @@ async function hydrateScreening(
     reviewNotes,
   };
   return { summary, payload };
+}
+
+async function hydrateScreening(
+  supabase: ReturnType<typeof createClient>,
+  row: ScreeningRow,
+) {
+  try {
+    return { ...(await decryptScreening(supabase, row)), error: null };
+  } catch {
+    return {
+      summary: {
+        id: row.id,
+        version: row.version,
+        hasCriticalRisk: true,
+        submittedAt: row.submitted_at,
+        expiresAt: row.expires_at,
+        decision: null,
+        reviewNotes: "",
+      } satisfies HealthScreeningSummary,
+      payload: null,
+      error:
+        "No fue posible leer esta evaluación. Solicita al administrador revisar su integridad y las claves de cifrado.",
+    };
+  }
 }

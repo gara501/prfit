@@ -1,23 +1,8 @@
 import { cookies } from "next/headers";
 import { requireRole } from "@/lib/auth/require-role";
+import { readAll } from "@/lib/supabase/read-all";
 import { createClient } from "@/lib/supabase/server";
-import type {
-  ClientMeasurementSummary,
-  ClientRoutineSummary,
-  ClientSessionSummary,
-  TrainerClientDetail,
-  TrainerClientSummary,
-} from "./types";
-
-type ClientProfileRelation = {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  email: string | null;
-  phone: string | null;
-  birth_date: string | null;
-  register_date: string;
-};
+import type { TrainerClientDetail, TrainerClientSummary } from "./types";
 
 export async function getTrainerDashboard(selectedClientId?: string): Promise<{
   clients: TrainerClientSummary[];
@@ -26,208 +11,96 @@ export async function getTrainerDashboard(selectedClientId?: string): Promise<{
 }> {
   const account = await requireRole("trainer");
   const supabase = createClient(await cookies());
-  const assignmentsPromise = supabase
-    .from("trainer_clients")
-    .select(
-      "client_id, client:profiles!trainer_clients_client_id_fkey(id, first_name, last_name, email, phone, birth_date, register_date)",
-    )
-    .eq("trainer_id", account.user.id)
-    .eq("is_active", true);
-  const routinesPromise = supabase
-    .from("routines")
-    .select(
-      "id, client_id, name, is_active, status, version_number, start_date, end_date",
-    )
-    .order("start_date", { ascending: false });
-  const sessionsPromise = supabase
-    .from("workout_sessions")
-    .select("id, client_id, date, workout_session_sets(completed)")
-    .order("date", { ascending: false });
-  const measurementsPromise = supabase
-    .from("body_compositions")
-    .select("id, client_id, date, weight, fat_percentage")
-    .order("date", { ascending: false });
-  const contextsPromise = supabase
-    .from("trainer_client_private_contexts")
-    .select("client_id, goals, restrictions, private_notes");
-  const [
-    assignmentsResult,
-    routinesResult,
-    sessionsResult,
-    measurementsResult,
-    contextsResult,
-  ] = await Promise.all([
-    assignmentsPromise,
-    routinesPromise,
-    sessionsPromise,
-    measurementsPromise,
-    contextsPromise,
-  ]);
-  const error =
-    assignmentsResult.error ??
-    routinesResult.error ??
-    sessionsResult.error ??
-    measurementsResult.error ??
-    contextsResult.error;
-  if (error) return { clients: [], selected: null, error: error.message };
+  try {
+    // Avoid calling the summary RPC when this trainer has no assignments. Besides
+    // being cheaper, this keeps the empty dashboard available while a database
+    // deployment is catching up with the application version.
+    const assignments = await supabase
+      .from("trainer_clients")
+      .select("client_id")
+      .eq("trainer_id", account.user.id)
+      .eq("is_active", true)
+      .limit(1);
 
-  const routinesByClient = groupBy(
-    routinesResult.data ?? [],
-    (row) => row.client_id,
-  );
-  const sessionsByClient = groupBy(
-    sessionsResult.data ?? [],
-    (row) => row.client_id,
-  );
-  const measurementsByClient = groupBy(
-    measurementsResult.data ?? [],
-    (row) => row.client_id,
-  );
-  const contextByClient = new Map(
-    (contextsResult.data ?? []).map((context) => [context.client_id, context]),
-  );
-  const today = new Date().toISOString().slice(0, 10);
+    if (assignments.error) throw new Error("assignments");
+    if (!assignments.data?.length) {
+      return { clients: [], selected: null, error: null };
+    }
 
-  const clients = (assignmentsResult.data ?? [])
-    .map((assignment) => {
-      const profile =
-        assignment.client as unknown as ClientProfileRelation | null;
-      if (!profile) return null;
-      const routines = routinesByClient.get(profile.id) ?? [];
-      const sessions = sessionsByClient.get(profile.id) ?? [];
-      const measurements = measurementsByClient.get(profile.id) ?? [];
-      const latestMeasurement = measurements[0];
-      const activeRoutine = routines.find(
-        (routine) =>
-          routine.status === "published" &&
-          routine.is_active &&
-          routine.start_date <= today &&
-          (!routine.end_date || routine.end_date >= today),
-      );
-      return {
-        id: profile.id,
-        firstName: profile.first_name ?? "",
-        lastName: profile.last_name ?? "",
-        email: profile.email ?? "",
-        phone: profile.phone ?? "",
-        birthDate: profile.birth_date ?? "",
-        registerDate: profile.register_date,
-        routineCount: routines.length,
-        activeRoutineCount: routines.filter(
-          (routine) => routine.status === "published" && routine.is_active,
-        ).length,
-        activeRoutineId: activeRoutine?.id ?? "",
-        activeRoutineName: activeRoutine?.name ?? "",
-        sessionCount: sessions.length,
-        lastSessionAt: sessions[0]?.date ?? "",
-        latestWeight:
-          latestMeasurement?.weight === null ||
-          latestMeasurement?.weight === undefined
-            ? null
-            : Number(latestMeasurement.weight),
-        latestFatPercentage:
-          latestMeasurement?.fat_percentage === null ||
-          latestMeasurement?.fat_percentage === undefined
-            ? null
-            : Number(latestMeasurement.fat_percentage),
-        latestMeasurementDate: latestMeasurement?.date ?? "",
-        activityStatus: getActivityStatus(sessions[0]?.date ?? "", today),
-      } satisfies TrainerClientSummary;
-    })
-    .filter((client): client is TrainerClientSummary => client !== null)
-    .toSorted((left, right) =>
-      `${left.firstName} ${left.lastName}`.localeCompare(
-        `${right.firstName} ${right.lastName}`,
-        "es",
+    const result = await readAll(supabase.rpc("list_trainer_client_summaries"));
+    const clients = result.data as unknown as TrainerClientSummary[];
+    const client = clients.find((c) => c.id === selectedClientId) ?? clients[0];
+    if (!client) return { clients, selected: null, error: null };
+    const [routines, sessions, measurements, context] = await Promise.all([
+      readAll(
+        supabase
+          .from("routines")
+          .select("id,name,is_active,status,version_number,start_date,end_date")
+          .eq("client_id", client.id)
+          .order("start_date", { ascending: false })
+          .order("id"),
       ),
-    );
-
-  const selectedClient =
-    clients.find((client) => client.id === selectedClientId) ??
-    clients[0] ??
-    null;
-  if (!selectedClient) return { clients, selected: null, error: null };
-
-  const selectedRoutines: ClientRoutineSummary[] = (
-    routinesByClient.get(selectedClient.id) ?? []
-  ).map((routine) => ({
-    id: routine.id,
-    name: routine.name,
-    isActive: routine.is_active,
-    status: routine.status as ClientRoutineSummary["status"],
-    versionNumber: routine.version_number,
-    startDate: routine.start_date,
-    endDate: routine.end_date ?? "",
-  }));
-  const selectedSessions: ClientSessionSummary[] = (
-    sessionsByClient.get(selectedClient.id) ?? []
-  )
-    .slice(0, 8)
-    .map((session) => {
-      const sets = session.workout_session_sets as unknown as Array<{
-        completed: boolean;
-      }>;
-      return {
-        id: session.id,
-        date: session.date,
-        completedSets: sets.filter((set) => set.completed).length,
-        totalSets: sets.length,
-      };
-    });
-  const selectedMeasurements: ClientMeasurementSummary[] = (
-    measurementsByClient.get(selectedClient.id) ?? []
-  )
-    .slice(0, 8)
-    .map((measurement) => ({
-      id: measurement.id,
-      date: measurement.date,
-      weight: measurement.weight === null ? null : Number(measurement.weight),
-      fatPercentage:
-        measurement.fat_percentage === null
-          ? null
-          : Number(measurement.fat_percentage),
-    }));
-
-  return {
-    clients,
-    selected: {
-      client: selectedClient,
-      routines: selectedRoutines,
-      sessions: selectedSessions,
-      measurements: selectedMeasurements,
-      context: {
-        goals: contextByClient.get(selectedClient.id)?.goals ?? "",
-        restrictions:
-          contextByClient.get(selectedClient.id)?.restrictions ?? "",
-        privateNotes:
-          contextByClient.get(selectedClient.id)?.private_notes ?? "",
+      supabase
+        .from("workout_sessions")
+        .select("id,date,workout_session_sets(completed)")
+        .eq("client_id", client.id)
+        .order("date", { ascending: false })
+        .order("id")
+        .limit(8),
+      supabase
+        .from("body_compositions")
+        .select("id,date,weight,fat_percentage")
+        .eq("client_id", client.id)
+        .order("date", { ascending: false })
+        .order("id")
+        .limit(8),
+      supabase
+        .from("trainer_client_private_contexts")
+        .select("goals,restrictions,private_notes")
+        .eq("client_id", client.id)
+        .maybeSingle(),
+    ]);
+    if (sessions.error || measurements.error || context.error)
+      throw new Error("query");
+    return {
+      clients,
+      error: null,
+      selected: {
+        client,
+        routines: routines.data.map((r) => ({
+          id: r.id,
+          name: r.name,
+          isActive: r.is_active,
+          status: r.status as "draft" | "published" | "archived",
+          versionNumber: r.version_number,
+          startDate: r.start_date,
+          endDate: r.end_date ?? "",
+        })),
+        sessions: (sessions.data ?? []).map((s) => ({
+          id: s.id,
+          date: s.date,
+          completedSets: s.workout_session_sets.filter((s) => s.completed)
+            .length,
+          totalSets: s.workout_session_sets.length,
+        })),
+        measurements: (measurements.data ?? []).map((m) => ({
+          id: m.id,
+          date: m.date,
+          weight: m.weight,
+          fatPercentage: m.fat_percentage,
+        })),
+        context: {
+          goals: context.data?.goals ?? "",
+          restrictions: context.data?.restrictions ?? "",
+          privateNotes: context.data?.private_notes ?? "",
+        },
       },
-    },
-    error: null,
-  };
-}
-
-function getActivityStatus(lastSessionDate: string, today: string) {
-  if (lastSessionDate === today) return "trained_today" as const;
-  if (!lastSessionDate) return "inactive" as const;
-  const daysSince = Math.floor(
-    (new Date(`${today}T12:00:00`).getTime() -
-      new Date(`${lastSessionDate}T12:00:00`).getTime()) /
-      86400000,
-  );
-  return daysSince >= 7 ? ("inactive" as const) : ("pending" as const);
-}
-
-function groupBy<T>(
-  values: T[],
-  getKey: (value: T) => string,
-): Map<string, T[]> {
-  const result = new Map<string, T[]>();
-  for (const value of values) {
-    const key = getKey(value);
-    const group = result.get(key);
-    if (group) group.push(value);
-    else result.set(key, [value]);
+    };
+  } catch {
+    return {
+      clients: [],
+      selected: null,
+      error: "No fue posible cargar el dashboard. Intenta nuevamente.",
+    };
   }
-  return result;
 }

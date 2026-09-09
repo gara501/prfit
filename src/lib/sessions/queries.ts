@@ -1,10 +1,12 @@
 import { cookies } from "next/headers";
 import { requireRole } from "@/lib/auth/require-role";
+import { getTrainingMethod } from "@/lib/routines/training-methods";
 import { createClient } from "@/lib/supabase/server";
 import type {
   ClientRoutineOption,
   LiveWorkoutExercise,
   LiveWorkoutSession,
+  LiveWorkoutSet,
   WorkoutSessionListItem,
 } from "./types";
 
@@ -242,8 +244,10 @@ export async function getLiveWorkoutSession(
         routineRelation?.effort_metric === "rpe"
           ? row.planned_target_rpe
           : row.planned_target_rir,
-      setType: row.planned_set_type,
-      trainingMethod: row.planned_training_method,
+      setType: row.planned_set_type as LiveWorkoutSet["setType"],
+      trainingMethod: getTrainingMethod(
+        row.planned_training_method as LiveWorkoutSet["trainingMethod"],
+      ).value,
       tempo: row.planned_tempo ?? "",
       isOptional: row.planned_is_optional,
       actualEffort:

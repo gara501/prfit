@@ -40,16 +40,20 @@ export function useTrainerClientMessages({
         setError(insertError?.message ?? "No fue posible enviar el mensaje.");
         return false;
       }
-      setMessages((current) => [
-        ...current,
-        {
-          id: data.id,
-          body: data.body,
-          senderId: data.sender_id,
-          sentAt: data.sent_at,
-          readAt: data.read_at,
-        },
-      ]);
+      setMessages((current) =>
+        current.some((message) => message.id === data.id)
+          ? current
+          : [
+              ...current,
+              {
+                id: data.id,
+                body: data.body,
+                senderId: data.sender_id,
+                sentAt: data.sent_at,
+                readAt: data.read_at,
+              },
+            ],
+      );
       return true;
     },
     [clientId, currentUserId, isSending, supabase, trainerId],
@@ -60,7 +64,8 @@ export function useTrainerClientMessages({
       const { error: updateError } = await supabase
         .from("trainer_client_messages")
         .update({ read_at: new Date().toISOString() })
-        .in("id", messageIds);
+        .in("id", messageIds)
+        .is("read_at", null);
       if (!updateError) {
         setMessages((current) =>
           current.map((message) =>
@@ -89,7 +94,7 @@ export function useTrainerClientMessages({
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "trainer_client_messages",
           filter: `trainer_id=eq.${trainerId},client_id=eq.${clientId}`,
@@ -102,9 +107,14 @@ export function useTrainerClientMessages({
             sent_at: string;
             read_at: string | null;
           };
+          if (payload.eventType === "DELETE") return;
           setMessages((current) =>
             current.some((item) => item.id === message.id)
-              ? current
+              ? current.map((item) =>
+                  item.id === message.id
+                    ? { ...item, readAt: message.read_at }
+                    : item,
+                )
               : [
                   ...current,
                   {
@@ -126,5 +136,51 @@ export function useTrainerClientMessages({
       void supabase.removeChannel(channel);
     };
   }, [clientId, currentUserId, markMessageIdsAsRead, supabase, trainerId]);
-  return { messages, isSending, error, send, markIncomingAsRead };
+  const [hasOlder, setHasOlder] = useState(initialMessages.length === 100);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const loadOlder = async () => {
+    const oldest = messages[0];
+    if (!oldest || loadingOlder) return;
+    setLoadingOlder(true);
+    const { data, error: loadError } = await supabase
+      .from("trainer_client_messages")
+      .select("id,body,sender_id,sent_at,read_at")
+      .eq("trainer_id", trainerId)
+      .eq("client_id", clientId)
+      .or(
+        `sent_at.lt.${oldest.sentAt},and(sent_at.eq.${oldest.sentAt},id.lt.${oldest.id})`,
+      )
+      .order("sent_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(100);
+    setLoadingOlder(false);
+    if (loadError) {
+      setError("No fue posible cargar mensajes anteriores.");
+      return;
+    }
+    setHasOlder(data.length === 100);
+    setMessages((current) => [
+      ...data
+        .toReversed()
+        .filter((row) => !current.some((m) => m.id === row.id))
+        .map((row) => ({
+          id: row.id,
+          body: row.body,
+          senderId: row.sender_id,
+          sentAt: row.sent_at,
+          readAt: row.read_at,
+        })),
+      ...current,
+    ]);
+  };
+  return {
+    messages,
+    isSending,
+    error,
+    send,
+    markIncomingAsRead,
+    hasOlder,
+    loadingOlder,
+    loadOlder,
+  };
 }

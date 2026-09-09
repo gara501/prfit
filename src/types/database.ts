@@ -1592,6 +1592,55 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      submit_encrypted_health_screening: {
+        Args: {
+          p_client_id: string;
+          p_has_critical_risk: boolean;
+          p_encrypted: Json;
+          p_content_hash: string;
+        };
+        Returns: string;
+      };
+      record_encrypted_health_review: {
+        Args: {
+          p_trainer_id: string;
+          p_client_id: string;
+          p_screening_id: string;
+          p_decision: string;
+          p_encrypted: Json;
+        };
+        Returns: string;
+      };
+      save_exercise_catalog: {
+        Args: {
+          p_exercise_id: string | null;
+          p_name: string;
+          p_image_url: string | null;
+          p_video_url: string | null;
+          p_body_zone_ids: string[];
+          p_equipment_ids: string[];
+        };
+        Returns: string;
+      };
+      list_trainer_client_summaries: {
+        Args: Record<string, never>;
+        Returns: Json[];
+      };
+      list_trainer_health_summaries: {
+        Args: Record<string, never>;
+        Returns: {
+          client_id: string;
+          first_name: string | null;
+          last_name: string | null;
+          screening_id: string | null;
+          version: number | null;
+          has_critical_risk: boolean | null;
+          submitted_at: string | null;
+          expires_at: string | null;
+          decision: string | null;
+        }[];
+      };
+
       activate_periodization_plan: {
         Args: { p_plan_id: string };
         Returns: string;
@@ -1615,7 +1664,7 @@ export type Database = {
         Args: {
           p_manual_reps_max?: number;
           p_manual_reps_min?: number;
-          p_manual_weight?: number;
+          p_manual_weight?: number | null;
           p_suggestion_id: string;
         };
         Returns: string;
@@ -1635,11 +1684,11 @@ export type Database = {
       complete_workout_session: {
         Args: {
           p_client_note: string;
-          p_energy: number;
+          p_energy: number | null;
           p_session_id: string;
-          p_session_rpe: number;
+          p_session_rpe: number | null;
           p_soreness_description: string;
-          p_soreness_level: number;
+          p_soreness_level: number | null;
         };
         Returns: string;
       };
@@ -1717,12 +1766,12 @@ export type Database = {
         Args: {
           p_client_id: string;
           p_days_at_week: number;
-          p_description: string;
+          p_description: string | null;
           p_effort_metric: string;
-          p_end_date: string;
+          p_end_date: string | null;
           p_exercises: Json;
           p_name: string;
-          p_routine_id: string;
+          p_routine_id: string | null;
           p_start_date: string;
           p_training_methods: Json;
         };

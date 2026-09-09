@@ -21,9 +21,7 @@ export default function TrainerLoading() {
           </section>
           <aside className="h-72 rounded-3xl bg-surface-inverse" />
         </div>
-        <output className="sr-only">
-          Cargando dashboard del entrenador.
-        </output>
+        <output className="sr-only">Cargando dashboard del entrenador.</output>
       </div>
     </main>
   );

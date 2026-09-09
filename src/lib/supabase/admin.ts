@@ -1,5 +1,7 @@
+import "server-only";
 // src/lib/supabase/admin.ts
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/database";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const secretKey = process.env.SUPABASE_SECRET_KEY;
@@ -11,7 +13,7 @@ export const createAdminClient = () => {
     );
   }
 
-  return createSupabaseClient(supabaseUrl, secretKey, {
+  return createSupabaseClient<Database>(supabaseUrl, secretKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

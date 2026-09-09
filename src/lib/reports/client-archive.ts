@@ -1,6 +1,8 @@
+import { isOwnMedicalDocumentPath } from "@/lib/health/document-path";
+import { readAll, readByIds, requireQuery } from "@/lib/supabase/read-all";
 import "server-only";
 
-import { PassThrough } from "node:stream";
+import { PassThrough, Readable } from "node:stream";
 import { ZipArchive } from "archiver";
 import {
   calculateGamificationSummary,
@@ -14,7 +16,9 @@ import { toCsv } from "./csv";
 
 const MAX_ARCHIVE_SOURCE_BYTES = 100 * 1024 * 1024;
 
-type ArchiveEntry = { name: string; content: Buffer | string };
+type ArchiveEntry =
+  | { name: string; content: Buffer | string }
+  | { name: string; load: () => AsyncGenerator<Buffer> };
 
 export async function prepareClientArchive(clientId: string) {
   const admin = createAdminClient();
@@ -32,62 +36,97 @@ export async function prepareClientArchive(clientId: string) {
     documentsResult,
     messagesResult,
   ] = await Promise.all([
-    admin.from("profiles").select("*").eq("id", clientId).maybeSingle(),
-    admin
-      .from("trainer_clients")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("start_date"),
-    admin
-      .from("routines")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("start_date"),
-    admin
-      .from("workout_sessions")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("started_at"),
-    admin
-      .from("workout_session_feedback")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("created_at"),
-    admin
-      .from("body_compositions")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("date"),
-    admin
-      .from("routine_exercise_progression_rules")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("created_at"),
-    admin
-      .from("routine_progression_suggestions")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("generated_at"),
-    admin
-      .from("scheduled_workouts")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("scheduled_date"),
-    admin
-      .from("health_screenings")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("submitted_at"),
-    admin
-      .from("health_documents")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("created_at"),
-    admin
-      .from("trainer_client_messages")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("sent_at"),
+    requireQuery(
+      admin.from("profiles").select("*").eq("id", clientId).maybeSingle(),
+    ),
+    readAll(
+      admin
+        .from("trainer_clients")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("start_date")
+        .order("id"),
+    ),
+    readAll(
+      admin
+        .from("routines")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("start_date")
+        .order("id"),
+    ),
+    readAll(
+      admin
+        .from("workout_sessions")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("started_at")
+        .order("id"),
+    ),
+    readAll(
+      admin
+        .from("workout_session_feedback")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("created_at")
+        .order("session_id"),
+    ),
+    readAll(
+      admin
+        .from("body_compositions")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("date")
+        .order("id"),
+    ),
+    readAll(
+      admin
+        .from("routine_exercise_progression_rules")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("created_at")
+        .order("id"),
+    ),
+    readAll(
+      admin
+        .from("routine_progression_suggestions")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("generated_at")
+        .order("id"),
+    ),
+    readAll(
+      admin
+        .from("scheduled_workouts")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("scheduled_date")
+        .order("id"),
+    ),
+    readAll(
+      admin
+        .from("health_screenings")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("submitted_at")
+        .order("id"),
+    ),
+    readAll(
+      admin
+        .from("health_documents")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("created_at")
+        .order("id"),
+    ),
+    readAll(
+      admin
+        .from("trainer_client_messages")
+        .select("*")
+        .eq("client_id", clientId)
+        .order("sent_at")
+        .order("id"),
+    ),
   ]);
   const profile = profileResult.data;
   if (!profile || profile.role !== "client") return null;
@@ -98,19 +137,25 @@ export async function prepareClientArchive(clientId: string) {
   const [{ data: routineExercises }, { data: sessionSets }] = await Promise.all(
     [
       routineIds.length
-        ? admin
-            .from("routine_exercises")
-            .select("*")
-            .in("routine_id", routineIds)
-            .order("day_number")
-            .order("order_index")
+        ? readByIds(routineIds, (batch) =>
+            admin
+              .from("routine_exercises")
+              .select("*")
+              .in("routine_id", batch)
+              .order("day_number")
+              .order("order_index")
+              .order("id"),
+          )
         : Promise.resolve({ data: [] }),
       sessionIds.length
-        ? admin
-            .from("workout_session_sets")
-            .select("*")
-            .in("workout_session_id", sessionIds)
-            .order("set_number")
+        ? readByIds(sessionIds, (batch) =>
+            admin
+              .from("workout_session_sets")
+              .select("*")
+              .in("workout_session_id", batch)
+              .order("set_number")
+              .order("id"),
+          )
         : Promise.resolve({ data: [] }),
     ],
   );
@@ -118,11 +163,14 @@ export async function prepareClientArchive(clientId: string) {
     (exercise) => exercise.id,
   );
   const { data: routineSets } = routineExerciseIds.length
-    ? await admin
-        .from("routine_exercise_sets")
-        .select("*")
-        .in("routine_exercise_id", routineExerciseIds)
-        .order("set_number")
+    ? await readByIds(routineExerciseIds, (batch) =>
+        admin
+          .from("routine_exercise_sets")
+          .select("*")
+          .in("routine_exercise_id", batch)
+          .order("set_number")
+          .order("id"),
+      )
     : { data: [] };
   const exerciseIds = [
     ...new Set([
@@ -133,7 +181,9 @@ export async function prepareClientArchive(clientId: string) {
     ]),
   ];
   const { data: exercises } = exerciseIds.length
-    ? await admin.from("exercises").select("id,name").in("id", exerciseIds)
+    ? await readByIds(exerciseIds, (batch) =>
+        admin.from("exercises").select("id,name").in("id", batch).order("id"),
+      )
     : { data: [] };
   const exerciseNames = new Map(
     (exercises ?? []).map((exercise) => [exercise.id, exercise.name]),
@@ -141,11 +191,14 @@ export async function prepareClientArchive(clientId: string) {
 
   const health = await Promise.all(
     (screeningsResult.data ?? []).map(async (screening) => {
-      const { data: reviews } = await admin
-        .from("health_screening_reviews")
-        .select("*")
-        .eq("screening_id", screening.id)
-        .order("reviewed_at");
+      const { data: reviews } = await readAll(
+        admin
+          .from("health_screening_reviews")
+          .select("*")
+          .eq("screening_id", screening.id)
+          .order("reviewed_at")
+          .order("id"),
+      );
       return {
         id: screening.id,
         version: screening.version,
@@ -159,6 +212,7 @@ export async function prepareClientArchive(clientId: string) {
           ciphertext: screening.payload_ciphertext,
           iv: screening.encryption_iv,
           tag: screening.encryption_tag,
+          keyVersion: screening.encryption_key_version,
         }),
         reviews: (reviews ?? []).map((review) => ({
           id: review.id,
@@ -173,6 +227,7 @@ export async function prepareClientArchive(clientId: string) {
                   ciphertext: review.notes_ciphertext,
                   iv: review.encryption_iv,
                   tag: review.encryption_tag,
+                  keyVersion: review.encryption_key_version ?? 1,
                 })
               : "",
         })),
@@ -238,32 +293,50 @@ export async function prepareClientArchive(clientId: string) {
     { name: "logros.json", content: json(gamification) },
     { name: "evaluaciones_salud.json", content: json(health) },
   ];
+  let approximateSizeBytes = entries.reduce(
+    (total, entry) =>
+      total + ("content" in entry ? Buffer.byteLength(entry.content) : 0),
+    0,
+  );
+  const documents = documentsResult.data;
+  for (const document of documents) {
+    if (
+      !isOwnMedicalDocumentPath(
+        document.storage_path,
+        clientId,
+        document.screening_id,
+      )
+    )
+      throw new Error("Un documento no pertenece a esta evaluación.");
+    approximateSizeBytes += document.size_bytes;
+  }
+  if (approximateSizeBytes > MAX_ARCHIVE_SOURCE_BYTES)
+    throw new Error("La exportación supera el límite de 100 MB.");
   const usedDocumentNames = new Set<string>();
-  for (const document of documentsResult.data ?? []) {
-    const { data, error } = await admin.storage
-      .from("medical-documents")
-      .download(document.storage_path);
-    if (error || !data)
-      throw new Error(`No fue posible incluir ${document.original_name}.`);
-    const baseName =
-      sanitizeFilename(document.original_name) || `${document.id}.bin`;
-    const uniqueName = uniqueFilename(baseName, usedDocumentNames);
+  for (const document of documents) {
+    const uniqueName = uniqueFilename(
+      sanitizeFilename(document.original_name) || `${document.id}.bin`,
+      usedDocumentNames,
+    );
     usedDocumentNames.add(uniqueName);
     entries.push({
       name: `documentos_medicos/${uniqueName}`,
-      content: Buffer.from(await data.arrayBuffer()),
+      load: async function* () {
+        const { data, error } = await admin.storage
+          .from("medical-documents")
+          .download(document.storage_path);
+        if (
+          error ||
+          !data ||
+          data.size !== document.size_bytes ||
+          data.size > 10 * 1024 * 1024
+        )
+          throw new Error(
+            "No fue posible verificar un documento de la exportación.",
+          );
+        yield Buffer.from(await data.arrayBuffer());
+      },
     });
-  }
-  const approximateSizeBytes = entries.reduce(
-    (total, entry) =>
-      total +
-      (typeof entry.content === "string"
-        ? Buffer.byteLength(entry.content)
-        : entry.content.byteLength),
-    0,
-  );
-  if (approximateSizeBytes > MAX_ARCHIVE_SOURCE_BYTES) {
-    throw new Error("La exportación supera el límite de 100 MB.");
   }
   const manifest = {
     schemaVersion: "1.0",
@@ -277,6 +350,11 @@ export async function prepareClientArchive(clientId: string) {
       "Este paquete se generó bajo solicitud y no se conserva como archivo público.",
     ],
   };
+  if (
+    approximateSizeBytes + Buffer.byteLength(json(manifest)) >
+    MAX_ARCHIVE_SOURCE_BYTES
+  )
+    throw new Error("La exportación supera el límite de 100 MB.");
   entries.unshift({ name: "manifest.json", content: json(manifest) });
   return {
     entries,
@@ -291,14 +369,16 @@ export async function prepareClientArchive(clientId: string) {
 export function createClientArchiveStream(entries: readonly ArchiveEntry[]) {
   const output = new PassThrough();
   const archive = new ZipArchive({ zlib: { level: 6 } });
-  archive.on("warning", (error) =>
-    console.warn("Advertencia al crear ZIP", error),
-  );
+  archive.on("warning", (error) => output.destroy(error));
   archive.on("error", (error) => output.destroy(error));
   archive.pipe(output);
   for (const entry of entries)
-    archive.append(entry.content, { name: entry.name });
-  void archive.finalize();
+    archive.append(
+      "content" in entry ? entry.content : Readable.from(entry.load()),
+      { name: entry.name },
+    );
+  output.on("close", () => archive.abort());
+  void archive.finalize().catch((error) => output.destroy(error));
   return output;
 }
 

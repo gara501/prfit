@@ -1,17 +1,12 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getPasswordRedirectPath } from "@/lib/auth/redirect-path";
 import { createClient } from "@/lib/supabase/server";
-
-function getSafeNext(value: string | null) {
-  return value?.startsWith("/") && !value.startsWith("//")
-    ? value
-    : "/auth/setup-password";
-}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = getSafeNext(url.searchParams.get("next"));
+  const next = getPasswordRedirectPath(url.searchParams.get("next"));
 
   if (!code) {
     return NextResponse.redirect(

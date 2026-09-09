@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { requireAuthenticatedAccount } from "@/lib/auth/require-role";
 import type { AppRole } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { readAll } from "@/lib/supabase/read-all";
 import { createClient } from "@/lib/supabase/server";
 
 export type ClientAssignment = {
@@ -58,7 +59,17 @@ export async function getAssignmentManagementData(): Promise<AssignmentManagemen
 
   const cookieStore = await cookies();
   const supabase = createClient(cookieStore);
-  const assignmentsPromise = createAdminClient().rpc("list_client_assignments");
+  const assignmentQuery = createAdminClient()
+    .rpc("list_client_assignments")
+    .order("client_id");
+  const assignmentsPromise = readAll(
+    account.role === "admin"
+      ? assignmentQuery
+      : assignmentQuery.eq("trainer_id", account.user.id),
+  ).catch(() => ({
+    data: [],
+    error: { message: "No fue posible cargar las asignaciones." },
+  }));
   const trainersPromise =
     account.role === "admin"
       ? supabase

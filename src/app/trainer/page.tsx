@@ -18,9 +18,9 @@ const dateFormatter = new Intl.DateTimeFormat("es-CO", {
 export default async function TrainerDashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ client?: string }>;
+  searchParams: Promise<{ client?: string; context?: string }>;
 }) {
-  const { client: selectedClientId } = await searchParams;
+  const { client: selectedClientId, context } = await searchParams;
   const { clients, selected, error } =
     await getTrainerDashboard(selectedClientId);
   const activeRoutines = clients.reduce(
@@ -35,6 +35,16 @@ export default async function TrainerDashboardPage({
   return (
     <main className="min-h-[calc(100vh-5rem)] bg-[#f4f6f1] px-4 py-8 sm:px-8 lg:px-12 lg:py-10">
       <div className="mx-auto max-w-[90rem]">
+        {context ? (
+          <p
+            role={context === "error" ? "alert" : "status"}
+            className="mb-4 rounded-xl border border-border bg-card p-4 text-foreground"
+          >
+            {context === "error"
+              ? "No se guardó el contexto. Intenta nuevamente."
+              : "Contexto guardado."}
+          </p>
+        ) : null}
         <header className="mb-8 flex flex-col gap-6 border-b border-slate-300 pb-7 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="font-mono text-xs font-black uppercase tracking-[0.2em] text-orange-700">

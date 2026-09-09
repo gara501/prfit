@@ -42,7 +42,9 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request).catch(async () => (await caches.match("/offline")) || Response.error()),
+      fetch(request).catch(
+        async () => (await caches.match("/offline")) || Response.error(),
+      ),
     );
     return;
   }

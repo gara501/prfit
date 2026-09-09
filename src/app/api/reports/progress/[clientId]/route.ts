@@ -22,14 +22,14 @@ export async function POST(
   if ("error" in validation) {
     return NextResponse.json({ error: validation.error }, { status: 400 });
   }
-  const data = await getProgressReportData(account, validation);
-  if (!data)
-    return NextResponse.json(
-      { error: "Cliente no encontrado." },
-      { status: 404 },
-    );
-
   try {
+    const data = await getProgressReportData(account, validation);
+    if (!data)
+      return NextResponse.json(
+        { error: "Cliente no encontrado." },
+        { status: 404 },
+      );
+
     const { renderProgressPdf } = await import("@/lib/reports/documents");
     const pdf = await renderProgressPdf(data);
     await recordExportAudit(account, {

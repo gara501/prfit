@@ -3,6 +3,7 @@
 import type { AuthError } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthRedirectUrl } from "@/lib/supabase/config";
@@ -87,10 +88,13 @@ export async function createTrainerClient(
     })
     .eq("id", clientId);
   if (profileError) {
-    await admin.auth.admin.deleteUser(clientId);
+    const { error: rollbackError } =
+      await admin.auth.admin.deleteUser(clientId);
     return {
       status: "error",
-      message: "No fue posible completar el perfil; la cuenta no fue creada.",
+      message: rollbackError
+        ? "No se pudo completar el perfil ni revertir la cuenta. Requiere revisión del administrador."
+        : "No fue posible completar el perfil; la cuenta se revirtió.",
       clientId: "",
     };
   }
@@ -99,10 +103,13 @@ export async function createTrainerClient(
     { p_client_id: clientId, p_trainer_id: trainer.user.id },
   );
   if (assignmentError) {
-    await admin.auth.admin.deleteUser(clientId);
+    const { error: rollbackError } =
+      await admin.auth.admin.deleteUser(clientId);
     return {
       status: "error",
-      message: `No fue posible vincular el cliente; la cuenta se revirtió. ${assignmentError.message}`,
+      message: rollbackError
+        ? "No se pudo vincular ni revertir la cuenta. Requiere revisión del administrador."
+        : "No fue posible vincular el cliente; la cuenta se revirtió.",
       clientId: "",
     };
   }
@@ -129,15 +136,20 @@ export async function saveClientPrivateContext(formData: FormData) {
   const compact = (value: FormDataEntryValue | null, maximum: number) =>
     typeof value === "string" ? value.trim().slice(0, maximum) : "";
   const supabase = createClient(await cookies());
-  await supabase.from("trainer_client_private_contexts").upsert(
-    {
-      trainer_id: account.user.id,
-      client_id: clientId,
-      goals: compact(formData.get("goals"), 4000),
-      restrictions: compact(formData.get("restrictions"), 4000),
-      private_notes: compact(formData.get("privateNotes"), 8000),
-    },
-    { onConflict: "trainer_id,client_id" },
+  const { error } = await supabase
+    .from("trainer_client_private_contexts")
+    .upsert(
+      {
+        trainer_id: account.user.id,
+        client_id: clientId,
+        goals: compact(formData.get("goals"), 4000),
+        restrictions: compact(formData.get("restrictions"), 4000),
+        private_notes: compact(formData.get("privateNotes"), 8000),
+      },
+      { onConflict: "trainer_id,client_id" },
+    );
+  revalidatePath("/trainer");
+  redirect(
+    `/trainer?client=${encodeURIComponent(clientId)}&context=${error ? "error" : "saved"}`,
   );
-  revalidatePath(`/trainer?client=${clientId}`);
 }

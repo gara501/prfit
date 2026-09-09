@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import type { AppRole } from "@/lib/auth/roles";
 import { isAppRole } from "@/lib/auth/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { readAll } from "@/lib/supabase/read-all";
 
 export type UserRole = AppRole;
 
@@ -54,9 +55,15 @@ export async function listAdminUsers(): Promise<UserListResult> {
   const supabaseAdmin = createAdminClient();
   const [authResult, profilesResult] = await Promise.all([
     listAllAuthUsers(supabaseAdmin),
-    supabaseAdmin
-      .from("profiles")
-      .select("id, first_name, last_name, role, is_active"),
+    readAll(
+      supabaseAdmin
+        .from("profiles")
+        .select("id, first_name, last_name, role, is_active")
+        .order("id"),
+    ).catch(() => ({
+      data: [],
+      error: { message: "No fue posible cargar los perfiles." },
+    })),
   ]);
 
   if (authResult.error) {

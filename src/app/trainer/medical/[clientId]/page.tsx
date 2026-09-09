@@ -56,7 +56,14 @@ export default async function TrainerClientMedicalPage({
             {query.error}
           </p>
         ) : null}
-        {!screening ? (
+        {screening?.error ? (
+          <p
+            role="alert"
+            className="mt-5 border border-destructive bg-card p-4 text-destructive"
+          >
+            {screening.error}
+          </p>
+        ) : !screening?.payload ? (
           <section className="mt-7 border border-border bg-card p-7">
             <h2 className="text-xl font-black">Sin evaluación enviada</h2>
             <p className="mt-2 text-sm text-muted-foreground">
